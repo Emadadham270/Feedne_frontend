@@ -14,21 +14,85 @@ import { CONFIG } from '@/constants/config';
 const getCurrentUserId = () => {
   try {
     return JSON.parse(localStorage.getItem(CONFIG.USER_KEY))?.state?.user?.id ?? null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 };
+
+const findCommentById = (comments, targetId) => {
+  for (const comment of comments) {
+    if (comment.id === targetId) return comment;
+    if (comment._replies?.length) {
+      const found = findCommentById(comment._replies, targetId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+const updateCommentInTree = (comments, targetId, updater) =>
+  comments.map((comment) => {
+    if (comment.id === targetId) return updater(comment);
+    if (comment._replies?.length) {
+      return { ...comment, _replies: updateCommentInTree(comment._replies, targetId, updater) };
+    }
+    return comment;
+  });
+
+const addReplyToCommentTree = (comments, parentId, newReply) =>
+  updateCommentInTree(comments, parentId, (comment) => ({
+    ...comment,
+    _count: { ...comment._count, replies: (comment._count?.replies ?? 0) + 1 },
+    _replies: [...(comment._replies || []), newReply],
+  }));
+
+const setRepliesInCommentTree = (comments, parentId, replies) =>
+  updateCommentInTree(comments, parentId, (comment) => ({
+    ...comment,
+    _replies: replies,
+  }));
+
+const removeCommentFromTree = (comments, targetId) =>
+  comments
+    .filter((comment) => comment.id !== targetId)
+    .map((comment) => {
+      if (comment._replies?.length) {
+        return {
+          ...comment,
+          _count: {
+            ...comment._count,
+            replies: comment._replies.some((r) => r.id === targetId)
+              ? Math.max(0, (comment._count?.replies ?? 1) - 1)
+              : comment._count?.replies,
+          },
+          _replies: removeCommentFromTree(comment._replies, targetId),
+        };
+      }
+      return comment;
+    });
+
+const toggleLikeInCommentTree = (comments, targetId, currentUserId) =>
+  updateCommentInTree(comments, targetId, (comment) => {
+    const isLiked = comment.reactions?.some((reaction) => reaction.userId === currentUserId);
+    const nextReactions = isLiked
+      ? (comment.reactions || []).filter((reaction) => reaction.userId !== currentUserId)
+      : [...(comment.reactions || []), { userId: currentUserId, type: 'LIKE' }];
+
+    return { ...comment, reactions: nextReactions };
+  });
 
 export function CommentsModal() {
   const { activeModal, activeModalData, closeModal } = useUIStore();
   const { user } = useAuthStore();
-  const [comments, setComments]     = useState([]);
-  const [isLoading, setIsLoading]   = useState(false);
-  const [text, setText]             = useState('');
-  const [replyTo, setReplyTo]       = useState(null); // { id, username }
+  const [comments, setComments] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [text, setText] = useState('');
+  const [replyTo, setReplyTo] = useState(null); // { id, username }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef(null);
 
   const isOpen = activeModal === 'comments';
-  const post   = activeModalData;
+  const post = activeModalData;
 
   // Load comments when modal opens
   useEffect(() => {
@@ -41,7 +105,9 @@ export function CommentsModal() {
         const result = await postService.getComments(post.id);
         if (!cancelled) setComments(result.data || []);
       } catch {}
-      finally { if (!cancelled) setIsLoading(false); }
+      finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
 
     setComments([]);
@@ -56,8 +122,8 @@ export function CommentsModal() {
   };
 
   const handleReplyTo = (comment) => {
-    setReplyTo({ id: comment.id, username: comment.author.username });
-    setText(`@${comment.author.username} `);
+    setReplyTo({ id: comment.id, username: comment.author?.username || 'user' });
+    setText(`@${comment.author?.username || 'user'} `);
     inputRef.current?.focus();
   };
 
@@ -71,14 +137,7 @@ export function CommentsModal() {
         replyTo?.id ?? null
       );
       if (replyTo) {
-        // Inject reply under the parent
-        setComments((prev) =>
-          prev.map((c) =>
-            c.id === replyTo.id
-              ? { ...c, _count: { ...c._count, replies: (c._count?.replies ?? 0) + 1 }, _replies: [...(c._replies || []), newComment] }
-              : c
-          )
-        );
+        setComments((prev) => addReplyToCommentTree(prev, replyTo.id, newComment));
       } else {
         setComments((prev) => [newComment, ...prev]);
       }
@@ -94,31 +153,36 @@ export function CommentsModal() {
   const handleDelete = async (commentId) => {
     try {
       await postService.deleteComment(commentId);
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
-    } catch {}
+      setComments((prev) => removeCommentFromTree(prev, commentId));
+    } catch (err) {
+      console.error('Failed to delete comment:', getErrorMessage(err));
+    }
   };
 
   const handleLike = async (commentId) => {
     const currentUserId = getCurrentUserId();
-    setComments((prev) =>
-      prev.map((c) => {
-        if (c.id !== commentId) return c;
-        const isLiked = c.reactions?.some((r) => r.userId === currentUserId);
-        const newReactions = isLiked
-          ? c.reactions.filter((r) => r.userId !== currentUserId)
-          : [...(c.reactions || []), { userId: currentUserId, type: 'LIKE' }];
-        return { ...c, reactions: newReactions };
-      })
-    );
+    const targetComment = findCommentById(comments, commentId);
+    if (!targetComment) return;
+
+    const shouldUndo = targetComment.reactions?.some((reaction) => reaction.userId === currentUserId) ?? false;
+
+    setComments((prev) => toggleLikeInCommentTree(prev, commentId, currentUserId));
+
     try {
-      const isCurrentlyLiked = comments.find((c) => c.id === commentId)
-        ?.reactions?.some((r) => r.userId === currentUserId);
-      if (isCurrentlyLiked) {
+      if (shouldUndo) {
         await postService.undoReactToComment(commentId);
       } else {
         await postService.reactToComment(commentId, 'LIKE');
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to toggle reaction:', getErrorMessage(err));
+      // Revert on failure
+      setComments((prev) => toggleLikeInCommentTree(prev, commentId, currentUserId));
+    }
+  };
+
+  const handleLoadReplies = (commentId, replies) => {
+    setComments((prev) => setRepliesInCommentTree(prev, commentId, replies));
   };
 
   return (
@@ -141,7 +205,9 @@ export function CommentsModal() {
                 onDelete={handleDelete}
                 onLike={handleLike}
                 onReply={handleReplyTo}
+                onLoadReplies={handleLoadReplies}
                 postId={post?.id}
+                depth={0}
               />
             ))
           )}
@@ -183,25 +249,51 @@ export function CommentsModal() {
   );
 }
 
-function CommentItem({ comment, currentUserId, onDelete, onLike, onReply, postId }) {
-  const [showReplies, setShowReplies]   = useState(false);
-  const [replies, setReplies]           = useState(comment._replies || []);
-  const [loadingReplies, setLoadingR]   = useState(false);
+function CommentItem({
+  comment,
+  currentUserId,
+  onDelete,
+  onLike,
+  onReply,
+  onLoadReplies,
+  postId,
+  depth = 0,
+}) {
+  const [showReplies, setShowReplies] = useState(false);
+  const [loadingReplies, setLoadingR] = useState(false);
   const replyCount = comment._count?.replies ?? 0;
 
-  const isLiked   = comment.reactions?.some((r) => r.userId === currentUserId);
+  const isLiked = comment.reactions?.some((r) => r.userId === currentUserId);
   const likeCount = comment.reactions?.length ?? 0;
-  const isOwn     = comment.author?.id === currentUserId;
+  const isOwn = comment.author?.id === currentUserId;
+
+  // If new replies are added dynamically to this comment, automatically show them
+  useEffect(() => {
+    if (comment._replies?.length > 0) {
+      setShowReplies(true);
+    }
+  }, [comment._replies?.length]);
 
   const loadReplies = async () => {
-    if (showReplies) { setShowReplies(false); return; }
+    if (showReplies) {
+      setShowReplies(false);
+      return;
+    }
+
+    if (comment._replies && comment._replies.length > 0) {
+      setShowReplies(true);
+      return;
+    }
+
     setLoadingR(true);
     try {
       const result = await postService.getCommentReplies(comment.id);
-      setReplies(result.data || []);
+      onLoadReplies(comment.id, result.data || []);
       setShowReplies(true);
     } catch {}
-    finally { setLoadingR(false); }
+    finally {
+      setLoadingR(false);
+    }
   };
 
   return (
@@ -209,7 +301,7 @@ function CommentItem({ comment, currentUserId, onDelete, onLike, onReply, postId
       <Avatar
         src={comment.author?.profile?.imgUrl}
         name={comment.author?.username}
-        size="sm"
+        size={depth > 0 ? 'xs' : 'sm'}
         className="flex-shrink-0 mt-0.5"
       />
       <div className="flex-1 min-w-0">
@@ -227,8 +319,10 @@ function CommentItem({ comment, currentUserId, onDelete, onLike, onReply, postId
           <span className="text-xs text-neutral-400">{timeAgo(comment.createdAt)}</span>
           <button
             onClick={() => onLike(comment.id)}
-            className={cn('flex items-center gap-1 text-xs font-medium transition-colors',
-              isLiked ? 'text-primary-500' : 'text-neutral-400 hover:text-primary-500')}
+            className={cn(
+              'flex items-center gap-1 text-xs font-medium transition-colors',
+              isLiked ? 'text-primary-500' : 'text-neutral-400 hover:text-primary-500'
+            )}
           >
             <Heart size={12} className={cn(isLiked && 'fill-primary-500')} />
             {likeCount > 0 && likeCount}
@@ -250,40 +344,38 @@ function CommentItem({ comment, currentUserId, onDelete, onLike, onReply, postId
           )}
         </div>
 
-        {/* Replies toggle */}
-        {replyCount > 0 && (
+        {/* Replies toggle button */}
+        {(replyCount > 0 || (comment._replies && comment._replies.length > 0)) && (
           <button
             onClick={loadReplies}
             className="mt-2 ml-2 flex items-center gap-1.5 text-xs text-primary-500 font-medium hover:underline"
           >
             <ChevronDown size={12} className={cn('transition-transform', showReplies && 'rotate-180')} />
-            {loadingReplies ? 'Loading...' : showReplies ? 'Hide replies' : `View ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`}
+            {loadingReplies
+              ? 'Loading...'
+              : showReplies
+              ? 'Hide replies'
+              : `View ${Math.max(replyCount, comment._replies?.length ?? 0)} ${
+                  Math.max(replyCount, comment._replies?.length ?? 0) === 1 ? 'reply' : 'replies'
+                }`}
           </button>
         )}
 
-        {/* Replies list */}
-        {showReplies && replies.length > 0 && (
-          <div className="mt-3 ml-4 space-y-3 border-l-2 border-neutral-100 dark:border-neutral-800 pl-3">
-            {replies.map((reply) => (
-              <div key={reply.id} className="flex gap-2">
-                <Avatar
-                  src={reply.author?.profile?.imgUrl}
-                  name={reply.author?.username}
-                  size="xs"
-                  className="flex-shrink-0 mt-0.5"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="bg-neutral-50 dark:bg-neutral-800/60 rounded-2xl px-3 py-2">
-                    <p className="text-xs font-semibold text-neutral-900 dark:text-white">
-                      {reply.author?.username}
-                    </p>
-                    <p className="text-xs text-neutral-700 dark:text-neutral-200 break-words mt-0.5">
-                      {reply.content}
-                    </p>
-                  </div>
-                  <span className="text-xs text-neutral-400 ml-2">{timeAgo(reply.createdAt)}</span>
-                </div>
-              </div>
+        {/* Nested Replies list rendered recursively */}
+        {showReplies && comment._replies?.length > 0 && (
+          <div className="mt-3 ml-2 space-y-3 border-l-2 border-neutral-100 dark:border-neutral-800 pl-3">
+            {comment._replies.map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                currentUserId={currentUserId}
+                onDelete={onDelete}
+                onLike={onLike}
+                onReply={onReply}
+                onLoadReplies={onLoadReplies}
+                postId={postId}
+                depth={depth + 1}
+              />
             ))}
           </div>
         )}
@@ -291,3 +383,4 @@ function CommentItem({ comment, currentUserId, onDelete, onLike, onReply, postId
     </div>
   );
 }
+
