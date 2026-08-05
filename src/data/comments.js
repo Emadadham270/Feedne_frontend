@@ -1,0 +1,66 @@
+import { MOCK_USERS } from './users';
+
+/** @type {import('../types/post.types').Comment[]} */
+export const MOCK_COMMENTS = [
+  {
+    id: 'c1',
+    postId: 'p1',
+    author: MOCK_USERS[2],
+    text: 'Absolutely stunning shot! The lighting is perfect 😍',
+    likesCount: 142,
+    isLiked: false,
+    replies: [
+      {
+        id: 'c1r1',
+        postId: 'p1',
+        author: MOCK_USERS[1],
+        text: 'Thank you so much! 🙏',
+        likesCount: 23,
+        isLiked: false,
+        replies: [],
+        createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      },
+    ],
+    createdAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'c2',
+    postId: 'p1',
+    author: MOCK_USERS[3],
+    text: 'This is so dreamy 🌙 Where exactly was this taken?',
+    likesCount: 87,
+    isLiked: true,
+    replies: [],
+    createdAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'c3',
+    postId: 'p1',
+    author: MOCK_USERS[4],
+    text: '#photography goals! You always capture the essence perfectly.',
+    likesCount: 56,
+    isLiked: false,
+    replies: [],
+    createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'c4',
+    postId: 'p2',
+    author: MOCK_USERS[5],
+    text: 'Amalfi is on my bucket list! This just moved it to #1 🌊',
+    likesCount: 234,
+    isLiked: false,
+    replies: [],
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'c5',
+    postId: 'p2',
+    author: MOCK_USERS[8],
+    text: 'The color of that water is unreal! 🏖️',
+    likesCount: 178,
+    isLiked: true,
+    replies: [],
+    createdAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000).toISOString(),
+  },
+];
