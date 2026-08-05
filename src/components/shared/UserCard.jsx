@@ -3,14 +3,18 @@ import { Button } from '@/components/ui/Button';
 import { formatCount } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * UserCard — shown in trending creators, suggestions, search results.
  */
 export function UserCard({ user, compact = false, onFollow }) {
   const navigate = useNavigate();
-  const [following, setFollowing] = useState(user.isFollowing);
+  const [following, setFollowing] = useState(!!user?.isFollowing);
+
+  useEffect(() => {
+    setFollowing(!!user?.isFollowing);
+  }, [user?.isFollowing]);
 
   const handleFollow = (e) => {
     e.stopPropagation();
