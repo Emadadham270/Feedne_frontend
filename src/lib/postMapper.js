@@ -46,6 +46,7 @@ export const mapPost = (post, currentUserId = null) => {
     numOfShares:  post.numOfShares ?? 0,
     createdAt:    post.createdAt,
     groupId:      post.groupId ?? null,
+    group:        post.group ?? null,
     author,
     sharedFrom:   post.sharedFrom ?? null,
     reactions,

@@ -6,6 +6,8 @@ export const ROUTE_PATHS = {
   SETTINGS: '/settings',
   MESSAGES: '/messages',
   NOTIFICATIONS: '/notifications',
+  GROUP: '/groups/:groupId',
+  GROUP_JOIN: '/groups/join/:code',
   LOGIN: '/login',
   SIGNUP: '/signup',
 };

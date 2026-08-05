@@ -16,6 +16,7 @@ export function MessagesPage() {
     isLoading,
     fetchConversations,
     setActiveConversation,
+    startConversation: storeStartConversation,
     activeConversationId,
   } = useChatStore();
 
@@ -43,9 +44,7 @@ export function MessagesPage() {
   };
 
   const startConversation = (user) => {
-    // Set active conversation to this user — messages will be loaded
-    setActiveConversation(user.id);
-    // Add a placeholder if not already in conversations list
+    storeStartConversation(user);
     setShowUserSearch(false);
     setSearchQuery('');
     setSearchResults([]);

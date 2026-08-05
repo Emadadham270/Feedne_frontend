@@ -12,6 +12,8 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ defa
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const MessagesPage = lazy(() => import('@/pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const GroupPage = lazy(() => import('@/pages/GroupPage').then((m) => ({ default: m.GroupPage })));
+const JoinGroupPage = lazy(() => import('@/pages/JoinGroupPage').then((m) => ({ default: m.JoinGroupPage })));
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('@/pages/SignupPage').then((m) => ({ default: m.SignupPage })));
 
@@ -63,6 +65,14 @@ const router = createBrowserRouter([
       {
         path: ROUTE_PATHS.NOTIFICATIONS,
         element: <Suspense fallback={<PageFallback />}><NotificationsPage /></Suspense>,
+      },
+      {
+        path: ROUTE_PATHS.GROUP,
+        element: <Suspense fallback={<PageFallback />}><GroupPage /></Suspense>,
+      },
+      {
+        path: ROUTE_PATHS.GROUP_JOIN,
+        element: <Suspense fallback={<PageFallback />}><JoinGroupPage /></Suspense>,
       },
     ],
   },

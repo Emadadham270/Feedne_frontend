@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Users } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { usePostStore } from '@/store/postStore';
 import { useUIStore } from '@/store/uiStore';
@@ -28,6 +28,7 @@ export function PostCard({ post }) {
   const reactsCount = post._count?.reactions ?? reactions.length;
   const commentsCount = post._count?.comments ?? 0;
   const mediaUrl    = post.mediaUrl || null;
+  const group       = post.group || null;
 
   const captionLimit = 160;
   const isLong       = content.length > captionLimit;
@@ -39,21 +40,38 @@ export function PostCard({ post }) {
     <article className="card animate-fade-in">
       {/* Post Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div
-          className="flex items-center gap-3 cursor-pointer"
-          onClick={() => navigate(ROUTES.PROFILE_VIEW(authorName))}
-        >
+        <div className="flex items-center gap-3">
           <Avatar
             src={authorAvatar}
             name={authorName}
             size="md"
             hasStory={post.author?.hasStory}
+            onClick={() => navigate(ROUTES.PROFILE_VIEW(authorName))}
+            className="cursor-pointer"
           />
           <div>
-            <p className="text-sm font-semibold text-neutral-900 dark:text-white hover:text-primary-500 transition-colors">
-              {authorName}
-            </p>
-            <p className="text-xs text-neutral-400">{timeAgo(post.createdAt || new Date())}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span
+                onClick={() => navigate(ROUTES.PROFILE_VIEW(authorName))}
+                className="text-sm font-semibold text-neutral-900 dark:text-white hover:text-primary-500 transition-colors cursor-pointer"
+              >
+                {authorName}
+              </span>
+
+              {group && (
+                <>
+                  <span className="text-xs text-neutral-400 font-bold px-0.5">➔</span>
+                  <span
+                    onClick={() => navigate(ROUTES.GROUP_VIEW(group.id))}
+                    className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer flex items-center gap-1 bg-primary-50 dark:bg-primary-950/40 px-2 py-0.5 rounded-full border border-primary-200/50 dark:border-primary-900/50"
+                  >
+                    <Users size={12} />
+                    {group.name}
+                  </span>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-neutral-400 mt-0.5">{timeAgo(post.createdAt || new Date())}</p>
           </div>
         </div>
 

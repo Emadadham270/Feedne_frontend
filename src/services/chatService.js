@@ -54,22 +54,13 @@ export const chatService = {
     return response.data;
   },
 
-  // ── Socket.IO ───────────────────────────────────────────────────────────────
-
   /**
-   * Emit message:send and wait for the ack from the server.
-   * Returns a normalised message object on success.
+   * POST /api/messages/:receiverId — send message via REST API.
+   * Server automatically broadcasts to socket rooms.
    */
-  sendMessage(receiverId, content) {
-    return new Promise((resolve, reject) => {
-      socket.emit('message:send', { receiverId, content }, (response) => {
-        if (response?.data) {
-          resolve(mapMessage(response.data));
-        } else {
-          reject(new Error(response?.message || 'Failed to send message'));
-        }
-      });
-    });
+  async sendMessage(receiverId, content) {
+    const response = await api.post(`/messages/${receiverId}`, { content });
+    return mapMessage(response.data);
   },
 
   connect() {

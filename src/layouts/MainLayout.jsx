@@ -5,6 +5,9 @@ import { RightPanel } from './RightPanel';
 import { CreatePostModal } from '@/features/post/components/CreatePostModal';
 import { EditProfileModal } from '@/features/profile/components/EditProfileModal';
 import { CommentsModal } from '@/features/post/components/CommentsModal';
+import { CreateStoryModal } from '@/features/story/components/CreateStoryModal';
+import { StoryViewerModal } from '@/features/story/components/StoryViewerModal';
+import { FloatingGroupWidget } from '@/features/group/components/FloatingGroupWidget';
 import { cn } from '@/lib/utils';
 
 
@@ -36,10 +39,15 @@ export function MainLayout({ children, showRightPanel = true }) {
         </main>
       </div>
 
-      {/* Global Modals */}
+      {/* Global Modals & Floating Bottom-Right Widgets */}
       <CreatePostModal />
+      <CreateStoryModal />
+      <StoryViewerModal />
       <EditProfileModal />
       <CommentsModal />
+      <FloatingGroupWidget />
     </div>
   );
 }
+
+

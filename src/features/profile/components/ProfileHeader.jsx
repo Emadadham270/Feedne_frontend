@@ -5,14 +5,20 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
+import { useChatStore } from '@/store/chatStore';
 import { userService } from '@/services/userService';
 import { getErrorMessage } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/constants/routes';
+import { MessageCircle } from 'lucide-react';
 
 export function ProfileHeader({ user, isOwn }) {
   const [following, setFollowing]           = useState(user?.isFollowing ?? false);
   const [isFollowingLoading, setIsLoading]  = useState(false);
   const { openModal }   = useUIStore();
   const { refreshUser } = useAuthStore();
+  const { startConversation } = useChatStore();
+  const navigate = useNavigate();
 
   const handleFollowToggle = async () => {
     if (isFollowingLoading || !user) return;
@@ -30,6 +36,12 @@ export function ProfileHeader({ user, isOwn }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleStartMessage = () => {
+    if (!user) return;
+    startConversation(user);
+    navigate(ROUTES.MESSAGES);
   };
 
   return (
@@ -56,14 +68,25 @@ export function ProfileHeader({ user, isOwn }) {
               Edit Profile
             </Button>
           ) : (
-            <Button
-              variant={following ? 'outlined' : 'primary'}
-              size="sm"
-              isLoading={isFollowingLoading}
-              onClick={handleFollowToggle}
-            >
-              {following ? 'Following' : 'Follow'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={handleStartMessage}
+                className="flex items-center gap-1.5"
+              >
+                <MessageCircle size={14} />
+                Message
+              </Button>
+              <Button
+                variant={following ? 'outlined' : 'primary'}
+                size="sm"
+                isLoading={isFollowingLoading}
+                onClick={handleFollowToggle}
+              >
+                {following ? 'Following' : 'Follow'}
+              </Button>
+            </div>
           )}
         </div>
 
