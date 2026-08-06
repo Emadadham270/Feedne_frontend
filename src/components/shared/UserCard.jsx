@@ -10,20 +10,35 @@ import { useEffect, useState } from 'react';
  */
 export function UserCard({ user, compact = false, onFollow }) {
   const navigate = useNavigate();
-  const [following, setFollowing] = useState(!!user?.isFollowing);
+  const [followState, setFollowState] = useState(
+    user?.isFollowing ? 'following' : user?.isRequested || user?.followStatus === 'requested' ? 'requested' : 'none'
+  );
 
   useEffect(() => {
-    setFollowing(!!user?.isFollowing);
-  }, [user?.isFollowing]);
+    setFollowState(
+      user?.isFollowing ? 'following' : user?.isRequested || user?.followStatus === 'requested' ? 'requested' : 'none'
+    );
+  }, [user?.isFollowing, user?.isRequested, user?.followStatus]);
 
   const handleFollow = (e) => {
     e.stopPropagation();
-    setFollowing((f) => !f);
-    onFollow?.(user.id, !following);
+    if (followState === 'following' || followState === 'requested') {
+      setFollowState('none');
+      onFollow?.(user.id, false);
+    } else {
+      setFollowState(user.isPrivate ? 'requested' : 'following');
+      onFollow?.(user.id, true);
+    }
   };
 
   const handleNavigate = () => {
     navigate(ROUTES.PROFILE_VIEW(user.username));
+  };
+
+  const getButtonLabel = () => {
+    if (followState === 'following') return 'Following';
+    if (followState === 'requested') return 'Requested';
+    return 'Follow';
   };
 
   if (compact) {
@@ -34,15 +49,20 @@ export function UserCard({ user, compact = false, onFollow }) {
           <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate group-hover:text-primary-500 transition-colors">
             {user.displayName}
           </p>
-          <p className="text-xs text-neutral-500 truncate">{user.handle}</p>
+          <p className="text-xs text-neutral-500 truncate">{user.handle || `@${user.username}`}</p>
+          {user.reason && (
+            <span className="inline-block text-[10px] font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/50 px-1.5 py-0.5 rounded-md mt-0.5 truncate max-w-full">
+              {user.reason}
+            </span>
+          )}
         </div>
         <Button
-          variant={following ? 'ghost' : 'primary'}
+          variant={followState !== 'none' ? 'ghost' : 'primary'}
           size="sm"
           onClick={handleFollow}
           className="flex-shrink-0"
         >
-          {following ? 'Following' : 'Follow'}
+          {getButtonLabel()}
         </Button>
       </div>
     );
@@ -63,12 +83,12 @@ export function UserCard({ user, compact = false, onFollow }) {
         </p>
       </div>
       <Button
-        variant={following ? 'outlined' : 'primary'}
+        variant={followState !== 'none' ? 'outlined' : 'primary'}
         size="sm"
         onClick={handleFollow}
         className="flex-shrink-0"
       >
-        {following ? 'Following' : 'Follow'}
+        {getButtonLabel()}
       </Button>
     </div>
   );

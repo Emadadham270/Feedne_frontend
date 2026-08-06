@@ -43,6 +43,7 @@ export const mapPost = (post, currentUserId = null) => {
     caption:      post.caption ?? '',
     content:      post.caption ?? '',   // alias used by some components
     mediaUrl:     post.mediaUrl || null,
+    media:        post.media || (post.mediaUrl ? [{ url: post.mediaUrl, type: 'image' }] : []),
     numOfShares:  post.numOfShares ?? 0,
     createdAt:    post.createdAt,
     groupId:      post.groupId ?? null,

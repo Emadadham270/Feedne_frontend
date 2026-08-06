@@ -54,9 +54,13 @@ export function ExplorePage() {
   }, [activeCategory, queryParam]);
 
   useEffect(() => {
-    userService.getUsers({ limit: 5 })
-      .then((res) => setSuggestedUsers(mapUsers(res.data || [])))
-      .catch(() => {});
+    userService.getRecommendedInterests(5)
+      .then((data) => setSuggestedUsers(data || []))
+      .catch(() => {
+        userService.getUsers({ limit: 5 })
+          .then((res) => setSuggestedUsers(mapUsers(res.data || [])))
+          .catch(() => {});
+      });
   }, []);
 
   const handleFollow = async (userId, shouldFollow) => {

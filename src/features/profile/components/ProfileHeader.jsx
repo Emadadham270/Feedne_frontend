@@ -12,9 +12,11 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import { MessageCircle } from 'lucide-react';
 
-export function ProfileHeader({ user, isOwn }) {
-  const [following, setFollowing]           = useState(user?.isFollowing ?? false);
-  const [isFollowingLoading, setIsLoading]  = useState(false);
+export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
+  const [followState, setFollowState] = useState(
+    user?.isFollowing ? 'following' : user?.isRequested || user?.followStatus === 'requested' ? 'requested' : 'none'
+  );
+  const [isFollowingLoading, setIsLoading] = useState(false);
   const { openModal }   = useUIStore();
   const { refreshUser } = useAuthStore();
   const { startConversation } = useChatStore();
@@ -24,18 +26,24 @@ export function ProfileHeader({ user, isOwn }) {
     if (isFollowingLoading || !user) return;
     setIsLoading(true);
     try {
-      if (following) {
+      if (followState === 'following' || followState === 'requested') {
         await userService.unfollowUser(user.id);
-        setFollowing(false);
+        setFollowState('none');
       } else {
-        await userService.followUser(user.id);
-        setFollowing(true);
+        const res = await userService.followUser(user.id);
+        setFollowState(res.status === 'requested' ? 'requested' : 'following');
       }
     } catch (err) {
       console.error('Follow toggle failed:', getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getButtonLabel = () => {
+    if (followState === 'following') return 'Following';
+    if (followState === 'requested') return 'Requested';
+    return 'Follow';
   };
 
   const handleStartMessage = () => {
@@ -79,12 +87,12 @@ export function ProfileHeader({ user, isOwn }) {
                 Message
               </Button>
               <Button
-                variant={following ? 'outlined' : 'primary'}
+                variant={followState !== 'none' ? 'outlined' : 'primary'}
                 size="sm"
                 isLoading={isFollowingLoading}
                 onClick={handleFollowToggle}
               >
-                {following ? 'Following' : 'Follow'}
+                {getButtonLabel()}
               </Button>
             </div>
           )}
@@ -105,19 +113,32 @@ export function ProfileHeader({ user, isOwn }) {
 
         {/* Stats */}
         <div className="flex items-center gap-6">
-          <ProfileStat value={user?.postsCount    ?? user?._count?.posts}     label="Posts" />
-          <ProfileStat value={user?.followersCount ?? user?._count?.followers} label="Followers" />
-          <ProfileStat value={user?.followingCount ?? user?._count?.following} label="Following" />
+          <ProfileStat value={user?.postsCount ?? user?._count?.posts} label="Posts" />
+          <ProfileStat
+            value={user?.followersCount ?? user?._count?.followers}
+            label="Followers"
+            onClick={() => onOpenFollowList?.('followers')}
+          />
+          <ProfileStat
+            value={user?.followingCount ?? user?._count?.following}
+            label="Following"
+            onClick={() => onOpenFollowList?.('following')}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function ProfileStat({ value, label }) {
+function ProfileStat({ value, label, onClick }) {
   return (
-    <div className="text-center">
-      <p className="font-bold text-neutral-900 dark:text-white">{formatCount(value || 0)}</p>
+    <div
+      onClick={onClick}
+      className={`text-center ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity group' : ''}`}
+    >
+      <p className="font-bold text-neutral-900 dark:text-white group-hover:text-primary-500 transition-colors">
+        {formatCount(value || 0)}
+      </p>
       <p className="text-xs text-neutral-500">{label}</p>
     </div>
   );

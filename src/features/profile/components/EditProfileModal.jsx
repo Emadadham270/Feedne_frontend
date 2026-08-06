@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
@@ -6,6 +6,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { userService } from '@/services/userService';
 import { getErrorMessage } from '@/services/api';
+import { Lock } from 'lucide-react';
 
 export function EditProfileModal() {
   const { activeModal, closeModal } = useUIStore();
@@ -14,10 +15,18 @@ export function EditProfileModal() {
   const [bio, setBio]             = useState(user?.bio || '');
   const [avatarFile, setAvatarFile] = useState(null);
   const [preview, setPreview]     = useState(null);
+  const [isPrivateAccount, setIsPrivateAccount] = useState(user?.settings?.isPrivateAccount || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError]         = useState(null);
 
   const isOpen = activeModal === 'editProfile';
+
+  useEffect(() => {
+    if (user) {
+      setBio(user.bio || '');
+      setIsPrivateAccount(user.settings?.isPrivateAccount || false);
+    }
+  }, [user]);
 
   const handleClose = () => {
     closeModal();
@@ -39,19 +48,17 @@ export function EditProfileModal() {
     setError(null);
     try {
       const formData = new FormData();
-      // Only send bio if it changed
       if (bio !== (user?.bio || '')) formData.append('bio', bio);
-      // Backend multer expects field named "media"
       if (avatarFile) formData.append('media', avatarFile);
 
-      // Nothing changed
-      if (!formData.has('bio') && !formData.has('media')) {
-        handleClose();
-        return;
+      if (formData.has('bio') || formData.has('media')) {
+        await userService.updateProfile(formData);
       }
 
-      await userService.updateProfile(formData);
-      // Refresh auth store so sidebar/avatar updates everywhere
+      if (isPrivateAccount !== (user?.settings?.isPrivateAccount || false)) {
+        await userService.updateSettings({ isPrivateAccount });
+      }
+
       await refreshUser();
       handleClose();
     } catch (err) {
@@ -101,6 +108,32 @@ export function EditProfileModal() {
           onChange={(e) => setBio(e.target.value)}
           rows={3}
         />
+
+        {/* Private Account toggle */}
+        <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/60 dark:border-neutral-700/60">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary-500/10 text-primary-500">
+              <Lock size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white">Private Account</p>
+              <p className="text-xs text-neutral-500">When enabled, only people you approve can see your posts</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsPrivateAccount(!isPrivateAccount)}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+              isPrivateAccount ? 'bg-primary-500' : 'bg-neutral-300 dark:bg-neutral-700'
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                isPrivateAccount ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>

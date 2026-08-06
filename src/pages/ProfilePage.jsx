@@ -3,16 +3,19 @@ import { useParams } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
 import { ProfileHeader } from '@/features/profile/components/ProfileHeader';
 import { ProfilePostGrid } from '@/features/profile/components/ProfilePostGrid';
+import { FollowListModal } from '@/features/profile/components/FollowListModal';
 import { useAuthStore } from '@/store/authStore';
 import { userService } from '@/services/userService';
 import { mapUser } from '@/lib/userMapper';
 import { Spinner } from '@/components/ui/Skeleton';
+import { Lock } from 'lucide-react';
 
 export function ProfilePage() {
   const { username } = useParams();
   const { user: currentUser } = useAuthStore();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [followListModal, setFollowListModal] = useState({ isOpen: false, type: 'followers' });
 
   // Determine if viewing own profile
   const isOwn = !username || username === 'me' || username === currentUser?.username;
@@ -47,6 +50,10 @@ export function ProfilePage() {
     return () => { cancelled = true; };
   }, [username, isOwn, currentUser?.username]);
 
+  const handleOpenFollowList = (type) => {
+    setFollowListModal({ isOpen: true, type });
+  };
+
   if (isLoading) {
     return (
       <MainLayout>
@@ -62,11 +69,31 @@ export function ProfilePage() {
   return (
     <MainLayout showRightPanel={false}>
       <div className="max-w-2xl mx-auto">
-        <ProfileHeader user={displayUser} isOwn={isOwn} />
-        <div className="border-t border-neutral-100 dark:border-neutral-800 mt-2">
-          <ProfilePostGrid userId={displayUser?.id} />
-        </div>
+        <ProfileHeader user={displayUser} isOwn={isOwn} onOpenFollowList={handleOpenFollowList} />
+
+        {displayUser?.isPrivate && !displayUser?.isFollowing && !isOwn ? (
+          <div className="border-t border-neutral-100 dark:border-neutral-800 mt-6 p-12 text-center card bg-neutral-50/50 dark:bg-neutral-900/50">
+            <div className="w-14 h-14 rounded-full border-2 border-neutral-300 dark:border-neutral-700 flex items-center justify-center mx-auto mb-3">
+              <Lock size={28} className="text-neutral-500" />
+            </div>
+            <h3 className="text-base font-bold text-neutral-900 dark:text-white">This Account is Private</h3>
+            <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
+              Follow this account to see their photos, videos, and posts.
+            </p>
+          </div>
+        ) : (
+          <div className="border-t border-neutral-100 dark:border-neutral-800 mt-2">
+            <ProfilePostGrid userId={displayUser?.id} />
+          </div>
+        )}
       </div>
+
+      <FollowListModal
+        isOpen={followListModal.isOpen}
+        onClose={() => setFollowListModal({ ...followListModal, isOpen: false })}
+        userId={displayUser?.id}
+        type={followListModal.type}
+      />
     </MainLayout>
   );
 }

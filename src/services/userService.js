@@ -103,9 +103,29 @@ export const userService = {
     return response.data;
   },
 
-  /** GET /api/users/me/blocked — list of users the current user has blocked */
-  async getBlockedUsers() {
-    const response = await api.get('/users/me/blocked');
-    return response.data; // User[]
+  /** GET /api/users/me/interests — algorithmically scored interest creator suggestions */
+  async getRecommendedInterests(limit = 10) {
+    const response = await api.get('/users/me/interests', { params: { limit } });
+    return response.data; // Array of scored candidate users with reason badges
+  },
+
+  // ── Follow Requests ─────────────────────────────────────────────────────────
+
+  /** GET /api/users/me/follow-requests */
+  async getFollowRequests() {
+    const response = await api.get('/users/me/follow-requests');
+    return response.data;
+  },
+
+  /** POST /api/users/me/follow-requests/:requestId/accept */
+  async acceptFollowRequest(requestId) {
+    const response = await api.post(`/users/me/follow-requests/${requestId}/accept`);
+    return response.data;
+  },
+
+  /** DELETE /api/users/me/follow-requests/:requestId/decline */
+  async declineFollowRequest(requestId) {
+    const response = await api.delete(`/users/me/follow-requests/${requestId}/decline`);
+    return response.data;
   },
 };

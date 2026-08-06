@@ -1,12 +1,15 @@
 import { ExploreGridItem } from './ExploreGridItem';
 import { ExploreSkeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { mapPosts } from '@/lib/postMapper';
 import { Search } from 'lucide-react';
 
 export function ExploreGrid({ posts, isLoading }) {
   if (isLoading) return <ExploreSkeleton />;
 
-  if (!posts?.length) {
+  const mappedPosts = mapPosts(posts || []);
+
+  if (!mappedPosts?.length) {
     return (
       <EmptyState
         icon={Search}
@@ -18,7 +21,7 @@ export function ExploreGrid({ posts, isLoading }) {
 
   return (
     <div className="masonry-grid">
-      {posts.map((post) => (
+      {mappedPosts.map((post) => (
         <ExploreGridItem key={post.id} post={post} />
       ))}
     </div>
