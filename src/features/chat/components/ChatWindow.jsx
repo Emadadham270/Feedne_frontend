@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Image } from 'lucide-react';
+import { Send, Image, Phone, Video, MessageCircle } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { MessageBubble } from './MessageBubble';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/authStore';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { MessageCircle } from 'lucide-react';
 
-export function ChatWindow({ conversation }) {
+export function ChatWindow({ conversation, onStartCall }) {
   const { messages, sendMessage, isSending } = useChatStore();
   const { user } = useAuthStore();
   const [text, setText] = useState('');
@@ -39,13 +38,33 @@ export function ChatWindow({ conversation }) {
   return (
     <div className="flex flex-col h-full">
       {/* Chat header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
-        <Avatar src={conversation.participant.avatar} name={conversation.participant.displayName} size="md" isOnline />
-        <div>
-          <p className="font-semibold text-neutral-900 dark:text-white text-sm">
-            {conversation.participant.displayName}
-          </p>
-          <p className="text-xs text-green-500">Online</p>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
+        <div className="flex items-center gap-3">
+          <Avatar src={conversation.participant.avatar} name={conversation.participant.displayName} size="md" isOnline />
+          <div>
+            <p className="font-semibold text-neutral-900 dark:text-white text-sm">
+              {conversation.participant.displayName}
+            </p>
+            <p className="text-xs text-green-500">Online</p>
+          </div>
+        </div>
+
+        {/* Voice & Video Call Action Buttons */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onStartCall?.('voice')}
+            className="p-2 rounded-xl text-neutral-600 hover:text-primary-500 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            title="Start Voice Call"
+          >
+            <Phone size={18} />
+          </button>
+          <button
+            onClick={() => onStartCall?.('video')}
+            className="p-2 rounded-xl text-neutral-600 hover:text-primary-500 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            title="Start Video Call"
+          >
+            <Video size={18} />
+          </button>
         </div>
       </div>
 

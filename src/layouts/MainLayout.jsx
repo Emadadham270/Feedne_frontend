@@ -8,6 +8,7 @@ import { CommentsModal } from '@/features/post/components/CommentsModal';
 import { CreateStoryModal } from '@/features/story/components/CreateStoryModal';
 import { StoryViewerModal } from '@/features/story/components/StoryViewerModal';
 import { FloatingGroupWidget } from '@/features/group/components/FloatingGroupWidget';
+import { IncomingCallOverlay } from '@/features/chat/components/IncomingCallOverlay';
 import { cn } from '@/lib/utils';
 
 
@@ -46,6 +47,7 @@ export function MainLayout({ children, showRightPanel = true }) {
       <EditProfileModal />
       <CommentsModal />
       <FloatingGroupWidget />
+      <IncomingCallOverlay />
     </div>
   );
 }

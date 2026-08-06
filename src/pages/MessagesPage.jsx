@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { MainLayout } from '@/layouts/MainLayout';
 import { ChatListItem } from '@/features/chat/components/ChatListItem';
 import { ChatWindow } from '@/features/chat/components/ChatWindow';
+import { VideoCallModal } from '@/features/chat/components/VideoCallModal';
 import { useChatStore } from '@/store/chatStore';
 import { userService } from '@/services/userService';
 import { mapUsers } from '@/lib/userMapper';
 import { Spinner } from '@/components/ui/Skeleton';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { MessageCircle, Search, X } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -24,6 +24,7 @@ export function MessagesPage() {
   const [searchResults, setSearchResults]     = useState([]);
   const [isSearching, setIsSearching]         = useState(false);
   const [showUserSearch, setShowUserSearch]   = useState(false);
+  const [callModal, setCallModal]             = useState({ isOpen: false, type: 'video' });
 
   useEffect(() => {
     fetchConversations();
@@ -48,6 +49,10 @@ export function MessagesPage() {
     setShowUserSearch(false);
     setSearchQuery('');
     setSearchResults([]);
+  };
+
+  const handleStartCall = (callType) => {
+    setCallModal({ isOpen: true, type: callType });
   };
 
   return (
@@ -128,9 +133,17 @@ export function MessagesPage() {
 
         {/* Chat window */}
         <div className="flex-1">
-          <ChatWindow conversation={activeConversation} />
+          <ChatWindow conversation={activeConversation} onStartCall={handleStartCall} />
         </div>
       </div>
+
+      {/* Video / Voice Call Modal */}
+      <VideoCallModal
+        isOpen={callModal.isOpen}
+        onClose={() => setCallModal({ ...callModal, isOpen: false })}
+        partnerUser={activeConversation?.participant}
+        callType={callModal.type}
+      />
     </MainLayout>
   );
 }

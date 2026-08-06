@@ -99,6 +99,47 @@ export const chatService = {
   offTyping() {
     socket.off('message:typing');
   },
+
+  // ── Call Signaling Sockets ───────────────────────────────────────────────
+
+  startCall(payload) {
+    socket.emit('call:start', payload);
+  },
+
+  acceptCall(payload) {
+    socket.emit('call:accept', payload);
+  },
+
+  declineCall(payload) {
+    socket.emit('call:decline', payload);
+  },
+
+  endCall(payload) {
+    socket.emit('call:end', payload);
+  },
+
+  onIncomingCall(callback) {
+    socket.on('call:incoming', callback);
+  },
+
+  onCallAccepted(callback) {
+    socket.on('call:accepted', callback);
+  },
+
+  onCallDeclined(callback) {
+    socket.on('call:declined', callback);
+  },
+
+  onCallEnded(callback) {
+    socket.on('call:ended', callback);
+  },
+
+  offCallEvents() {
+    socket.off('call:incoming');
+    socket.off('call:accepted');
+    socket.off('call:declined');
+    socket.off('call:ended');
+  },
 };
 
 /**
