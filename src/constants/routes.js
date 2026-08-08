@@ -15,4 +15,6 @@ export const ROUTES = {
   GROUP_JOIN_VIEW: (code) => `/groups/join/${code}`,
   LOGIN: '/login',
   SIGNUP: '/signup',
+  ADMIN: '/admin',
 };
+

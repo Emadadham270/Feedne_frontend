@@ -34,6 +34,10 @@ export const mapUser = (user) => {
     isPrivate:      user.settings?.isPrivateAccount ?? user.isPrivate ?? false,
     // Verification
     isVerified:     user.isVerified ?? false,
+    // Platform role
+    role:           user.role ?? 'USER',
+    // Platform block status
+    isBlocked:      user.isBlocked ?? false,
     // Social state — set by the caller when known
     isFollowing:    user.isFollowing ?? false,
     hasStory:       user.hasStory ?? false,

@@ -10,4 +10,5 @@ export const ROUTE_PATHS = {
   GROUP_JOIN: '/groups/join/:code',
   LOGIN: '/login',
   SIGNUP: '/signup',
+  ADMIN: '/admin',
 };

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, TrendingUp, User, Settings, LogOut, PlusCircle, Flame, Check } from 'lucide-react';
+import { Home, Compass, TrendingUp, User, Settings, LogOut, PlusCircle, Flame, Check, Shield } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
@@ -63,6 +63,17 @@ export function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+
+        {/* Admin Panel link — only visible to ADMIN role users */}
+        {user?.role === 'ADMIN' && (
+          <NavLink
+            to={ROUTES.ADMIN}
+            className={({ isActive }) => cn('nav-link', isActive && 'active')}
+          >
+            <Shield size={20} className="text-amber-500" />
+            <span className="text-amber-500 font-semibold">Admin Panel</span>
+          </NavLink>
+        )}
       </nav>
 
       {/* Create post CTA */}

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
+import { AdminRoute } from './AdminRoute';
 import { ROUTE_PATHS } from './routes.constants';
 import { Spinner } from '@/components/ui/Skeleton';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
@@ -24,6 +25,7 @@ const GroupPage = lazy(() => import('@/pages/GroupPage').then((m) => ({ default:
 const JoinGroupPage = lazy(() => import('@/pages/JoinGroupPage').then((m) => ({ default: m.JoinGroupPage })));
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('@/pages/SignupPage').then((m) => ({ default: m.SignupPage })));
+const AdminPage = lazy(() => import('@/features/admin/AdminPage').then((m) => ({ default: m.AdminPage })));
 
 const PageFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -87,6 +89,17 @@ const router = createBrowserRouter([
       {
         path: ROUTE_PATHS.GROUP_JOIN,
         element: <Suspense fallback={<PageFallback />}><JoinGroupPage /></Suspense>,
+      },
+    ],
+  },
+
+  // Admin-only routes
+  {
+    element: <AdminRoute />,
+    children: [
+      {
+        path: ROUTE_PATHS.ADMIN,
+        element: <Suspense fallback={<PageFallback />}><AdminPage /></Suspense>,
       },
     ],
   },
