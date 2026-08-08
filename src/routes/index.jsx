@@ -3,6 +3,14 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 import { ROUTE_PATHS } from './routes.constants';
 import { Spinner } from '@/components/ui/Skeleton';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { OfflineDetector } from '@/components/shared/OfflineDetector';
+
+// Error pages
+import { NotFoundPage } from '@/pages/error/NotFoundPage';
+import { ServerErrorPage } from '@/pages/error/ServerErrorPage';
+import { NoInternetPage } from '@/pages/error/NoInternetPage';
+import { ForbiddenPage } from '@/pages/error/ForbiddenPage';
 
 // Lazy-load pages for code splitting
 const HomePage = lazy(() => import('@/pages/HomePage').then((m) => ({ default: m.HomePage })));
@@ -33,6 +41,12 @@ const router = createBrowserRouter([
     path: ROUTE_PATHS.SIGNUP,
     element: <Suspense fallback={<PageFallback />}><SignupPage /></Suspense>,
   },
+
+  // Explicit Error Pages
+  { path: '/404', element: <NotFoundPage /> },
+  { path: '/500', element: <ServerErrorPage /> },
+  { path: '/offline', element: <NoInternetPage /> },
+  { path: '/403', element: <ForbiddenPage /> },
 
   // Protected routes
   {
@@ -76,8 +90,20 @@ const router = createBrowserRouter([
       },
     ],
   },
+
+  // Wildcard 404 Not Found Catch-All Route
+  {
+    path: '*',
+    element: <NotFoundPage />,
+  },
 ]);
 
 export function AppRouter() {
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary>
+      <OfflineDetector>
+        <RouterProvider router={router} />
+      </OfflineDetector>
+    </ErrorBoundary>
+  );
 }

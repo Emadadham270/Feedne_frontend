@@ -12,12 +12,17 @@ import { IncomingCallOverlay } from '@/features/chat/components/IncomingCallOver
 import { cn } from '@/lib/utils';
 
 
+import { useNotificationSSE } from '@/hooks/useNotificationSSE';
+
+import { NotificationToastContainer } from '@/features/notifications/components/NotificationToastContainer';
+
 /**
  * MainLayout — wraps all authenticated pages.
  * Structure: [Sidebar] [Topbar + Content] [RightPanel]
  */
 export function MainLayout({ children, showRightPanel = true }) {
   const { sidebarOpen } = useUIStore();
+  useNotificationSSE();
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-primary)]">
@@ -48,6 +53,7 @@ export function MainLayout({ children, showRightPanel = true }) {
       <CommentsModal />
       <FloatingGroupWidget />
       <IncomingCallOverlay />
+      <NotificationToastContainer />
     </div>
   );
 }
