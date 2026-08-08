@@ -1,15 +1,9 @@
 import api from './api';
 import { socket } from '@/lib/socket';
+import { useUIStore } from '@/store/uiStore';
 
 /**
  * chatService — REST API + Socket.IO for messaging.
- *
- * Backend conversation list shape:
- *   { data: [{ user: { id, username, profile: { imgUrl } }, lastMessage: { id, content, createdAt, isMine } }], meta }
- *
- * Backend message shape:
- *   { id, content, createdAt, senderId, receiverId,
- *     sender: { id, username }, receiver: { id, username } }
  */
 export const chatService = {
   // ── REST ────────────────────────────────────────────────────────────────────
@@ -23,13 +17,13 @@ export const chatService = {
     const items = response.data.data || [];
 
     return items.map((conv) => ({
-      // Use the partner's user ID as the conversation ID for 1-on-1 chats
       id:          conv.user.id,
       participant: {
         id:          conv.user.id,
         username:    conv.user.username,
         displayName: conv.user.username,
         avatar:      conv.user.profile?.imgUrl ?? null,
+        isVerified:  conv.user.isVerified ?? false,
       },
       lastMessage: conv.lastMessage,
       unreadCount: 0,
@@ -55,16 +49,40 @@ export const chatService = {
   },
 
   /**
-   * POST /api/messages/:receiverId — send message via REST API.
-   * Server automatically broadcasts to socket rooms.
+   * POST /api/messages/:receiverId — send message (text or file attachment) via REST API.
    */
-  async sendMessage(receiverId, content) {
-    const response = await api.post(`/messages/${receiverId}`, { content });
+  async sendMessage(receiverId, content, file) {
+    if (file) {
+      const formData = new FormData();
+      if (content?.trim()) formData.append('content', content.trim());
+      formData.append('media', file);
+      const response = await api.post(`/messages/${receiverId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return mapMessage(response.data);
+    } else {
+      const response = await api.post(`/messages/${receiverId}`, { content: content?.trim() || '' });
+      return mapMessage(response.data);
+    }
+  },
+
+  /**
+   * POST /api/messages/:messageId/react — react to message with emoji.
+   */
+  async reactToMessage(messageId, emoji) {
+    socket.emit('message:react', { messageId, emoji });
+    const response = await api.post(`/messages/${messageId}/react`, { emoji });
     return mapMessage(response.data);
   },
 
   connect() {
     socket.connect();
+    // Listen for socket errors (e.g. unverified user error)
+    socket.on('message:error', (data) => {
+      if (data?.code === 'VERIFICATION_REQUIRED' || data?.message?.includes('verification required')) {
+        useUIStore.getState().openModal('verificationRequired', { message: data.message });
+      }
+    });
   },
 
   disconnect() {
@@ -77,6 +95,14 @@ export const chatService = {
    */
   onMessage(callback) {
     socket.on('message:new', (raw) => callback(mapMessage(raw)));
+  },
+
+  /**
+   * Register handler for message reactions.
+   * @param {(msg: object) => void} callback
+   */
+  onReaction(callback) {
+    socket.on('message:reaction', (raw) => callback(mapMessage(raw)));
   },
 
   /**
@@ -94,6 +120,8 @@ export const chatService = {
 
   offMessage() {
     socket.off('message:new');
+    socket.off('message:reaction');
+    socket.off('message:error');
   },
 
   offTyping() {
@@ -152,6 +180,9 @@ function mapMessage(raw) {
     receiverId: raw.receiverId,
     text:      raw.content,
     content:   raw.content,
+    mediaUrl:  raw.mediaUrl ?? null,
+    mediaType: raw.mediaType ?? null,
+    reactions: raw.reactions ?? [],
     status:    'sent',
     createdAt: raw.createdAt,
     sender:    raw.sender ?? null,

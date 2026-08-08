@@ -14,7 +14,6 @@ const getCurrentUserId = () => {
 
 /**
  * Chat store — manages conversations list and per-conversation messages.
- * Socket.IO real-time message reception is set up in fetchConversations.
  */
 export const useChatStore = create((set, get) => ({
   conversations: [],
@@ -77,7 +76,7 @@ export const useChatStore = create((set, get) => ({
                 ...conv,
                 lastMessage: {
                   id: message.id,
-                  content: message.content || message.text,
+                  content: message.content || (message.mediaType === 'VOICE' ? '🎤 Voice message' : message.mediaType === 'IMAGE' ? '📷 Image message' : ''),
                   createdAt: message.createdAt,
                   isMine,
                 },
@@ -95,10 +94,11 @@ export const useChatStore = create((set, get) => ({
                 username: partner?.username || 'User',
                 displayName: partner?.username || 'User',
                 avatar: partner?.profile?.imgUrl || null,
+                isVerified: partner?.isVerified || false,
               },
               lastMessage: {
                 id: message.id,
-                content: message.content || message.text,
+                content: message.content || (message.mediaType === 'VOICE' ? '🎤 Voice message' : message.mediaType === 'IMAGE' ? '📷 Image message' : ''),
                 createdAt: message.createdAt,
                 isMine,
               },
@@ -113,6 +113,22 @@ export const useChatStore = create((set, get) => ({
           return {
             messages: { ...s.messages, [otherId]: updatedMessages },
             conversations: updatedConversations,
+          };
+        });
+      });
+
+      chatService.onReaction((updatedMessage) => {
+        const currentUserId = getCurrentUserId();
+        const otherId =
+          updatedMessage.senderId === currentUserId ? updatedMessage.receiverId : updatedMessage.senderId;
+
+        set((s) => {
+          const existing = s.messages[otherId] || [];
+          const updatedMessages = existing.map((m) =>
+            m.id === updatedMessage.id ? { ...m, reactions: updatedMessage.reactions } : m
+          );
+          return {
+            messages: { ...s.messages, [otherId]: updatedMessages },
           };
         });
       });
@@ -177,6 +193,7 @@ export const useChatStore = create((set, get) => ({
           username: user.username || user.handle || user.displayName,
           displayName: user.displayName || user.username,
           avatar: user.avatar || user.profile?.imgUrl || null,
+          isVerified: user.isVerified || false,
         },
         lastMessage: null,
         unreadCount: 0,
@@ -201,7 +218,7 @@ export const useChatStore = create((set, get) => ({
 
   // ── Send Message ───────────────────────────────────────────────────────────
 
-  sendMessage: async (conversationId, text) => {
+  sendMessage: async (conversationId, text, file = null) => {
     const currentUserId = getCurrentUserId();
     set({ isSending: true });
 
@@ -210,8 +227,10 @@ export const useChatStore = create((set, get) => ({
       id: tempId,
       senderId: currentUserId,
       receiverId: conversationId,
-      text,
-      content: text,
+      text: text || '',
+      content: text || '',
+      mediaUrl: file ? URL.createObjectURL(file) : null,
+      mediaType: file ? (file.type.startsWith('audio/') || file.type.includes('webm') ? 'VOICE' : 'IMAGE') : null,
       status: 'sending',
       createdAt: new Date().toISOString(),
     };
@@ -224,7 +243,7 @@ export const useChatStore = create((set, get) => ({
     }));
 
     try {
-      const msg = await chatService.sendMessage(conversationId, text);
+      const msg = await chatService.sendMessage(conversationId, text, file);
 
       set((state) => {
         const currentMsgs = state.messages[conversationId] || [];
@@ -239,7 +258,7 @@ export const useChatStore = create((set, get) => ({
                 ...conv,
                 lastMessage: {
                   id: msg.id,
-                  content: msg.content || msg.text,
+                  content: msg.content || (msg.mediaType === 'VOICE' ? '🎤 Voice message' : msg.mediaType === 'IMAGE' ? '📷 Image message' : ''),
                   createdAt: msg.createdAt,
                   isMine: true,
                 },
@@ -259,15 +278,59 @@ export const useChatStore = create((set, get) => ({
       });
     } catch (err) {
       console.error('Send message failed:', err);
+      const isUnverified =
+        err?.response?.data?.code === 'VERIFICATION_REQUIRED' ||
+        err?.response?.data?.message?.includes('verification required');
+
       set((state) => ({
         messages: {
           ...state.messages,
-          [conversationId]: (state.messages[conversationId] || []).map((m) =>
-            m.id === tempId ? { ...m, status: 'failed' } : m
+          [conversationId]: (state.messages[conversationId] || []).filter(
+            (m) => m.id !== tempId
           ),
         },
         isSending: false,
       }));
+
+      if (isUnverified) {
+        import('@/store/uiStore').then(({ useUIStore }) => {
+          useUIStore.getState().openModal('verificationRequired', {
+            message: err.response?.data?.message || 'Account verification required to send direct messages.',
+          });
+        });
+      }
+      throw err;
+    }
+  },
+
+  // ── React to Message ───────────────────────────────────────────────────────
+
+  reactToMessage: async (messageId, conversationId, emoji) => {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) return;
+
+    // Optimistic update
+    set((state) => {
+      const currentMsgs = state.messages[conversationId] || [];
+      const updatedMsgs = currentMsgs.map((m) => {
+        if (m.id !== messageId) return m;
+        const existingReactions = m.reactions || [];
+        const otherReactions = existingReactions.filter((r) => r.userId !== currentUserId);
+        const newReactions = [...otherReactions, { userId: currentUserId, emoji }];
+        return { ...m, reactions: newReactions };
+      });
+      return { messages: { ...state.messages, [conversationId]: updatedMsgs } };
+    });
+
+    try {
+      const updatedMsg = await chatService.reactToMessage(messageId, emoji);
+      set((state) => {
+        const currentMsgs = state.messages[conversationId] || [];
+        const updatedMsgs = currentMsgs.map((m) => (m.id === messageId ? updatedMsg : m));
+        return { messages: { ...state.messages, [conversationId]: updatedMsgs } };
+      });
+    } catch (err) {
+      console.error('Failed to react to message:', err);
     }
   },
 

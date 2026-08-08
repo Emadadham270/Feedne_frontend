@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Mail, Moon, Sun, Menu, Search, Users, MessageSquare, User, ArrowRight } from 'lucide-react';
+import { Bell, Mail, Moon, Sun, Menu, Search, Users, MessageSquare, User, ArrowRight, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/store/authStore';
@@ -59,11 +59,11 @@ export function Topbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && search.trim()) {
-      setIsPopoverOpen(false);
-      navigate(`${ROUTES.EXPLORE}?q=${encodeURIComponent(search.trim())}`);
-    }
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!search.trim()) return;
+    setIsPopoverOpen(false);
+    navigate(`/explore?q=${encodeURIComponent(search.trim())}`);
   };
 
   const handleSelectResult = (type, item) => {
@@ -72,46 +72,50 @@ export function Topbar() {
     if (type === 'user') {
       navigate(ROUTES.PROFILE_VIEW(item.username));
     } else if (type === 'group') {
-      navigate(ROUTES.GROUP_VIEW(item.id));
+      navigate(`/groups/${item.id}`);
     } else if (type === 'post') {
-      openModal('comments', { post: item });
+      navigate(`/explore`);
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 flex items-center gap-4 px-6 h-16 bg-white dark:bg-[#13161F] border-b border-neutral-100 dark:border-neutral-800">
-      {/* Mobile menu button */}
-      <button
-        onClick={toggleSidebar}
-        className="lg:hidden p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-      >
-        <Menu size={20} className="text-neutral-600 dark:text-neutral-400" />
-      </button>
+    <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-[#1A1D27]/80 backdrop-blur-md border-b border-neutral-200/80 dark:border-neutral-800/80 px-4 lg:px-6 flex items-center justify-between gap-4">
+      {/* Left: Mobile menu toggle + Logo */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleSidebar}
+          className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 lg:hidden transition-colors"
+        >
+          <Menu size={20} />
+        </button>
 
-      {/* Logo (mobile only) */}
-      <span className="lg:hidden text-xl font-extrabold text-primary-500">feedne</span>
+        <Link to="/" className="flex items-center gap-2 lg:hidden">
+          <span className="font-extrabold text-lg text-neutral-900 dark:text-white">
+            Feed<span className="text-primary-500">ne</span>
+          </span>
+        </Link>
+      </div>
 
-      {/* Search Input & Live Popover */}
-      <div ref={searchRef} className="relative flex-1 max-w-md">
-        <div className="relative flex items-center">
-          <Search size={16} className="absolute left-3.5 text-neutral-400 pointer-events-none" />
+      {/* Center: Live Search Bar with Popover */}
+      <div ref={searchRef} className="relative flex-1 max-w-md hidden sm:block">
+        <form onSubmit={handleSearchSubmit} className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
             onFocus={() => searchResults && setIsPopoverOpen(true)}
-            placeholder="Search users, groups, posts..."
-            className="w-full bg-neutral-100 dark:bg-neutral-800/80 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 rounded-full pl-10 pr-4 py-2 text-xs outline-none focus:ring-2 focus:ring-primary-500/30 transition-all"
+            placeholder="Search users, posts, groups..."
+            className="w-full pl-10 pr-4 py-2 text-xs rounded-full bg-neutral-100 dark:bg-neutral-800 border-none text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
           />
           {isSearching && (
-            <div className="absolute right-3.5 w-3.5 h-3.5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
           )}
-        </div>
+        </form>
 
-        {/* Live Results Popover */}
+        {/* Search Results Popover */}
         {isPopoverOpen && searchResults && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1A1D27] rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden max-h-[460px] overflow-y-auto z-50 animate-in slide-in-from-top-2 duration-150">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1A1D27] rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden z-50 animate-in fade-in-0 slide-in-from-top-2">
             {/* Users section */}
             {searchResults.users && searchResults.users.length > 0 && (
               <div className="p-3 border-b border-neutral-100 dark:border-neutral-800/60">
@@ -126,10 +130,15 @@ export function Topbar() {
                       onClick={() => handleSelectResult('user', u)}
                       className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
                     >
-                      <Avatar src={u.profile?.imgUrl} name={u.username} size="xs" />
+                      <Avatar src={u.profile?.imgUrl} name={u.username} size="xs" isVerified={u.isVerified} />
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-neutral-900 dark:text-white truncate">
-                          {u.username}
+                        <p className="text-xs font-bold text-neutral-900 dark:text-white truncate flex items-center gap-1">
+                          <span>{u.username}</span>
+                          {u.isVerified && (
+                            <span className="w-3 h-3 rounded-full bg-blue-500 text-white flex items-center justify-center inline-flex">
+                              <Check size={8} strokeWidth={3.5} />
+                            </span>
+                          )}
                         </p>
                         {u.profile?.bio && (
                           <p className="text-[11px] text-neutral-400 truncate">{u.profile.bio}</p>
@@ -160,7 +169,9 @@ export function Topbar() {
                         <p className="text-xs font-bold text-neutral-900 dark:text-white truncate">
                           {g.name}
                         </p>
-                        <p className="text-[11px] text-neutral-400">{g._count?.members ?? 1} members</p>
+                        {g.bio && (
+                          <p className="text-[11px] text-neutral-400 truncate">{g.bio}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -168,52 +179,21 @@ export function Topbar() {
               </div>
             )}
 
-            {/* Posts section */}
-            {searchResults.posts && searchResults.posts.length > 0 && (
-              <div className="p-3">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-2">
-                  <MessageSquare size={12} />
-                  <span>Posts</span>
-                </div>
-                <div className="space-y-1">
-                  {searchResults.posts.slice(0, 3).map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => handleSelectResult('post', p)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
-                    >
-                      <Avatar src={p.author?.profile?.imgUrl} name={p.author?.username} size="xs" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate">
-                          {p.author?.username}
-                        </p>
-                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
-                          {p.caption || 'Media post'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* See all button */}
+            {/* View full search results footer */}
             <button
-              onClick={() => {
-                setIsPopoverOpen(false);
-                navigate(`${ROUTES.EXPLORE}?q=${encodeURIComponent(search.trim())}`);
-              }}
-              className="w-full p-2.5 bg-neutral-50 dark:bg-neutral-900 text-xs font-bold text-primary-500 hover:text-primary-600 flex items-center justify-center gap-1 border-t border-neutral-100 dark:border-neutral-800"
+              onClick={handleSearchSubmit}
+              className="w-full p-3 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs font-bold text-primary-500 flex items-center justify-center gap-1.5 transition-colors"
             >
-              <span>See all results for "{search}"</span>
-              <ArrowRight size={12} />
+              <span>View all results for &quot;{search}&quot;</span>
+              <ArrowRight size={14} />
             </button>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-2 ml-auto">
-        {/* Theme toggle */}
+      {/* Right actions: Theme toggle, Notifications, Direct Messages, User avatar */}
+      <div className="flex items-center gap-2">
+        {/* Dark mode toggle */}
         <button
           onClick={toggleTheme}
           className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
@@ -257,6 +237,7 @@ export function Topbar() {
             src={user.avatar}
             name={user.displayName}
             size="sm"
+            isVerified={user.isVerified}
             onClick={() => navigate(ROUTES.PROFILE_VIEW(user.username))}
             className="ml-1 cursor-pointer"
           />

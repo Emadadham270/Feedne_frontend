@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useNotificationSSE } from '@/hooks/useNotificationSSE';
 
 import { NotificationToastContainer } from '@/features/notifications/components/NotificationToastContainer';
+import { VerificationRequiredModal } from '@/features/auth/components/VerificationRequiredModal';
 
 /**
  * MainLayout — wraps all authenticated pages.
@@ -54,6 +55,7 @@ export function MainLayout({ children, showRightPanel = true }) {
       <FloatingGroupWidget />
       <IncomingCallOverlay />
       <NotificationToastContainer />
+      <VerificationRequiredModal />
     </div>
   );
 }

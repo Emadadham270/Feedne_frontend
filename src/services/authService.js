@@ -35,4 +35,14 @@ export const authService = {
     const response = await api.get('/users/me');
     return response.data;
   },
+
+  async sendOTP() {
+    const response = await api.post('/auth/send-otp');
+    return response.data;
+  },
+
+  async verifyOTP(code) {
+    const response = await api.post('/auth/verify-otp', { code });
+    return response.data;
+  },
 };

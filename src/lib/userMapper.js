@@ -32,6 +32,8 @@ export const mapUser = (user) => {
     postsCount:     user._count?.posts ?? 0,
     // Privacy
     isPrivate:      user.settings?.isPrivateAccount ?? user.isPrivate ?? false,
+    // Verification
+    isVerified:     user.isVerified ?? false,
     // Social state — set by the caller when known
     isFollowing:    user.isFollowing ?? false,
     hasStory:       user.hasStory ?? false,

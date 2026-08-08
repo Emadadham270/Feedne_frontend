@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, Users } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Users, Check } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { usePostStore } from '@/store/postStore';
 import { useUIStore } from '@/store/uiStore';
@@ -21,6 +21,7 @@ export function PostCard({ post }) {
   const postId      = post.id;
   const authorName  = post.author?.username || post.author?.displayName || 'Unknown';
   const authorAvatar = post.author?.avatar || post.author?.profile?.imgUrl;
+  const isAuthorVerified = Boolean(post.author?.isVerified);
   const content     = post.caption || post.content || '';
   const reactions   = post.reactions ?? [];
   const currentUserId = user?.id;
@@ -46,6 +47,7 @@ export function PostCard({ post }) {
             name={authorName}
             size="md"
             hasStory={post.author?.hasStory}
+            isVerified={isAuthorVerified}
             onClick={() => navigate(ROUTES.PROFILE_VIEW(authorName))}
             className="cursor-pointer"
           />
@@ -53,47 +55,61 @@ export function PostCard({ post }) {
             <div className="flex items-center gap-1.5 flex-wrap">
               <span
                 onClick={() => navigate(ROUTES.PROFILE_VIEW(authorName))}
-                className="text-sm font-semibold text-neutral-900 dark:text-white hover:text-primary-500 transition-colors cursor-pointer"
+                className="text-sm font-semibold text-neutral-900 dark:text-white hover:text-primary-500 transition-colors cursor-pointer flex items-center gap-1"
               >
-                {authorName}
+                <span>{authorName}</span>
+                {isAuthorVerified && (
+                  <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center inline-flex" title="Verified User">
+                    <Check size={9} strokeWidth={3.5} />
+                  </span>
+                )}
               </span>
 
               {group && (
                 <>
-                  <span className="text-xs text-neutral-400 font-bold px-0.5">➔</span>
+                  <span className="text-neutral-400 text-xs">•</span>
                   <span
-                    onClick={() => navigate(ROUTES.GROUP_VIEW(group.id))}
-                    className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer flex items-center gap-1 bg-primary-50 dark:bg-primary-950/40 px-2 py-0.5 rounded-full border border-primary-200/50 dark:border-primary-900/50"
+                    onClick={() => navigate(`/groups/${group.id}`)}
+                    className="text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-primary-500 transition-colors cursor-pointer flex items-center gap-1"
                   >
                     <Users size={12} />
-                    {group.name}
+                    <span>{group.name}</span>
                   </span>
                 </>
               )}
             </div>
-            <p className="text-xs text-neutral-400 mt-0.5">{timeAgo(post.createdAt || new Date())}</p>
+            <p className="text-xs text-neutral-400">{timeAgo(post.createdAt)}</p>
           </div>
         </div>
 
-        {/* Options menu (edit/delete for own, share for all) */}
+        {/* Options Menu */}
         <PostOptionsMenu post={post} />
       </div>
 
-      {/* Shared-from banner */}
+      {/* Shared Post Original Banner */}
       {post.sharedFrom && (
-        <div className="mx-4 mb-3 px-4 py-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm">
-          <p className="text-xs text-neutral-400 mb-1">
-            Reposted from <span className="font-medium text-neutral-600 dark:text-neutral-300">@{post.sharedFrom.author?.username}</span>
-          </p>
-          {post.sharedFrom.caption && (
-            <p className="text-neutral-700 dark:text-neutral-200 line-clamp-2">{post.sharedFrom.caption}</p>
-          )}
-          {post.sharedFrom.mediaUrl && (
-            <img
-              src={post.sharedFrom.mediaUrl}
-              alt="Shared post"
-              className="mt-2 w-full max-h-48 object-cover rounded-lg"
+        <div className="mx-4 mb-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-100 dark:border-neutral-700/50">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Avatar
+              src={post.sharedFrom.author?.profile?.imgUrl}
+              name={post.sharedFrom.author?.username}
+              size="xs"
+              isVerified={post.sharedFrom.author?.isVerified}
             />
+            <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
+              <span>{post.sharedFrom.author?.username}</span>
+              {post.sharedFrom.author?.isVerified && (
+                <span className="w-3 h-3 rounded-full bg-blue-500 text-white flex items-center justify-center inline-flex">
+                  <Check size={8} strokeWidth={3.5} />
+                </span>
+              )}
+            </span>
+            <span className="text-[10px] text-neutral-400">• Original Post</span>
+          </div>
+          {post.sharedFrom.caption && (
+            <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">
+              {post.sharedFrom.caption}
+            </p>
           )}
         </div>
       )}
@@ -101,89 +117,70 @@ export function PostCard({ post }) {
       {/* Caption */}
       {content && (
         <div className="px-4 pb-3">
-          <p className="text-sm text-neutral-800 dark:text-neutral-200 leading-relaxed break-words">
+          <p className="text-sm text-neutral-800 dark:text-neutral-200 leading-relaxed whitespace-pre-line">
             {displayCaption}
-            {isLong && (
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="ml-1 text-primary-500 font-medium hover:underline"
-              >
-                {isExpanded ? 'less' : 'more'}
-              </button>
-            )}
           </p>
-        </div>
-      )}
-
-      {/* Media */}
-      {mediaUrl && (
-        <div className="relative overflow-hidden">
-          {mediaUrl.includes('/video/') || post.mediaType === 'VIDEO' ? (
-            <video
-              src={mediaUrl}
-              className="w-full max-h-[520px] object-cover"
-              controls
-            />
-          ) : (
-            <img
-              src={mediaUrl}
-              alt={content || 'Post image'}
-              className="w-full max-h-[520px] object-cover"
-              loading="lazy"
-            />
+          {isLong && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-xs font-semibold text-primary-500 hover:text-primary-600 mt-1 transition-colors"
+            >
+              {isExpanded ? 'Show less' : 'Read more'}
+            </button>
           )}
         </div>
       )}
 
-      {/* Engagement Bar */}
-      <div className="flex items-center justify-between px-4 py-3">
+      {/* Media Image/Video */}
+      {mediaUrl && (
+        <div className="relative bg-neutral-950 overflow-hidden max-h-[500px] flex items-center justify-center">
+          {mediaUrl.includes('/video/') || mediaUrl.endsWith('.mp4') ? (
+            <video src={mediaUrl} controls className="w-full max-h-[500px] object-contain" />
+          ) : (
+            <img src={mediaUrl} alt="Post content" className="w-full max-h-[500px] object-cover" />
+          )}
+        </div>
+      )}
+
+      {/* Post Actions Bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-100 dark:border-neutral-800/60 mt-2">
         <div className="flex items-center gap-4">
-          {/* Like */}
           <button
             onClick={() => toggleLike(postId)}
-            className="flex items-center gap-1.5 group"
-            aria-label={isLiked ? 'Unlike' : 'Like'}
+            className={cn(
+              'flex items-center gap-1.5 text-xs font-semibold transition-colors',
+              isLiked ? 'text-red-500' : 'text-neutral-500 hover:text-red-500'
+            )}
           >
-            <Heart
-              size={20}
-              className={cn(
-                'transition-all duration-200',
-                isLiked
-                  ? 'fill-primary-500 text-primary-500 scale-110'
-                  : 'text-neutral-400 group-hover:text-primary-500 group-hover:scale-110',
-              )}
-            />
-            <span className={cn('text-sm font-medium', isLiked ? 'text-primary-500' : 'text-neutral-500')}>
-              {formatCount(reactsCount)}
-            </span>
+            <Heart size={18} className={isLiked ? 'fill-current' : ''} />
+            <span>{formatCount(reactsCount)}</span>
           </button>
 
-          {/* Comment */}
           <button
-            onClick={() => openModal('comments', post)}
-            className="flex items-center gap-1.5 group"
-            aria-label="Comments"
+            onClick={() => openModal('comments', { postId })}
+            className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-primary-500 transition-colors"
           >
-            <MessageCircle size={20} className="text-neutral-400 group-hover:text-secondary-500 transition-colors" />
-            <span className="text-sm font-medium text-neutral-500">{formatCount(commentsCount)}</span>
+            <MessageCircle size={18} />
+            <span>{formatCount(commentsCount)}</span>
+          </button>
+
+          <button
+            onClick={() => openModal('createPost', { shareFromPost: post })}
+            className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-primary-500 transition-colors"
+          >
+            <Share2 size={18} />
+            <span>{formatCount(post.numOfShares || 0)}</span>
           </button>
         </div>
 
-        {/* Bookmark */}
         <button
           onClick={() => toggleBookmark(postId)}
-          aria-label={post.isBookmarked ? 'Unbookmark' : 'Bookmark'}
-          className="group"
+          className={cn(
+            'text-neutral-500 hover:text-primary-500 transition-colors',
+            post.isBookmarked && 'text-primary-500'
+          )}
         >
-          <Bookmark
-            size={20}
-            className={cn(
-              'transition-all duration-200',
-              post.isBookmarked
-                ? 'fill-secondary-500 text-secondary-500'
-                : 'text-neutral-400 group-hover:text-secondary-500',
-            )}
-          />
+          <Bookmark size={18} className={post.isBookmarked ? 'fill-current' : ''} />
         </button>
       </div>
     </article>

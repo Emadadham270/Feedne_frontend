@@ -2,7 +2,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { formatCount } from '@/lib/utils';
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
@@ -10,15 +9,16 @@ import { userService } from '@/services/userService';
 import { getErrorMessage } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, ShieldAlert, Check } from 'lucide-react';
+import { OTPModal } from '@/features/auth/components/OTPModal';
 
 export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
   const [followState, setFollowState] = useState(
     user?.isFollowing ? 'following' : user?.isRequested || user?.followStatus === 'requested' ? 'requested' : 'none'
   );
   const [isFollowingLoading, setIsLoading] = useState(false);
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
   const { openModal }   = useUIStore();
-  const { refreshUser } = useAuthStore();
   const { startConversation } = useChatStore();
   const navigate = useNavigate();
 
@@ -69,12 +69,25 @@ export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
             name={user?.displayName || user?.username}
             size="xl"
             hasStory={user?.hasStory}
+            isVerified={user?.isVerified}
             className="ring-4 ring-white dark:ring-[#1A1D27]"
           />
           {isOwn ? (
-            <Button variant="outlined" size="sm" onClick={() => openModal('editProfile')}>
-              Edit Profile
-            </Button>
+            <div className="flex items-center gap-2">
+              {!user?.isVerified && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsOTPModalOpen(true)}
+                  className="bg-amber-500 hover:bg-amber-600 border-amber-600 text-white font-bold"
+                >
+                  Verify Account
+                </Button>
+              )}
+              <Button variant="outlined" size="sm" onClick={() => openModal('editProfile')}>
+                Edit Profile
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <Button
@@ -98,10 +111,36 @@ export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
           )}
         </div>
 
+        {/* Unverified Warning Banner for Own Account */}
+        {isOwn && !user?.isVerified && (
+          <div className="mb-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-600 dark:text-amber-400">
+            <div className="flex items-center gap-3">
+              <ShieldAlert size={22} className="flex-shrink-0" />
+              <div>
+                <p className="text-sm font-bold">Account Not Verified</p>
+                <p className="text-xs opacity-90">
+                  Verbal actions (creating posts, commenting, sending messages) are restricted until you verify your email address.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsOTPModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md transition-all flex-shrink-0 self-end sm:self-auto"
+            >
+              Verify Now (Send OTP)
+            </button>
+          </div>
+        )}
+
         <div className="mb-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
-              {user?.displayName || user?.username}
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+              <span>{user?.displayName || user?.username}</span>
+              {user?.isVerified && (
+                <span className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center inline-flex" title="Verified Account">
+                  <Check size={12} strokeWidth={3.5} />
+                </span>
+              )}
             </h1>
           </div>
           <p className="text-sm text-neutral-400">{user?.handle || `@${user?.username}`}</p>
@@ -126,6 +165,12 @@ export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
           />
         </div>
       </div>
+
+      {/* OTP Verification Modal */}
+      <OTPModal
+        isOpen={isOTPModalOpen}
+        onClose={() => setIsOTPModalOpen(false)}
+      />
     </div>
   );
 }

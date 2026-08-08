@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, TrendingUp, User, Settings, LogOut, PlusCircle, Flame } from 'lucide-react';
+import { Home, Compass, TrendingUp, User, Settings, LogOut, PlusCircle, Flame, Check } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
@@ -35,9 +35,16 @@ export function Sidebar() {
       {/* User info */}
       {user && (
         <div className="flex items-center gap-3 mb-8 px-2">
-          <Avatar src={user.avatar} name={user.displayName} size="md" hasStory={user.hasStory} />
+          <Avatar src={user.avatar} name={user.displayName} size="md" hasStory={user.hasStory} isVerified={user.isVerified} />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{user.displayName}</p>
+            <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate flex items-center gap-1">
+              <span>{user.displayName}</span>
+              {user.isVerified && (
+                <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center inline-flex" title="Verified User">
+                  <Check size={9} strokeWidth={3.5} />
+                </span>
+              )}
+            </p>
             <p className="text-xs text-neutral-400 truncate">{user.handle}</p>
           </div>
         </div>
@@ -58,24 +65,26 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Create Post Button */}
-      <Button
-        variant="primary"
-        fullWidth
-        className="mb-6 mt-4"
-        onClick={() => openModal('createPost')}
-      >
-        <PlusCircle size={18} />
-        Create Post
-      </Button>
+      {/* Create post CTA */}
+      <div className="mt-4 mb-4">
+        <Button
+          variant="primary"
+          size="md"
+          className="w-full justify-center gap-2 font-bold shadow-lg shadow-primary-500/20"
+          onClick={() => openModal('createPost')}
+        >
+          <PlusCircle size={18} />
+          <span>New Post</span>
+        </Button>
+      </div>
 
       {/* Logout */}
       <button
         onClick={handleLogout}
-        className="flex items-center gap-3 px-4 py-2 text-sm text-neutral-500 hover:text-red-500 transition-colors rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10"
+        className="nav-link text-neutral-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
       >
-        <LogOut size={18} />
-        Logout
+        <LogOut size={20} />
+        <span>Logout</span>
       </button>
     </aside>
   );

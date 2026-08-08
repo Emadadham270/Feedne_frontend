@@ -21,14 +21,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally — clear session and redirect to login
+// Handle 401 & 403 VERIFICATION_REQUIRED globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const data = error.response?.data;
+
+    if (status === 401) {
       localStorage.removeItem(CONFIG.TOKEN_KEY);
       localStorage.removeItem(CONFIG.USER_KEY);
       window.location.href = '/login';
+    } else if (status === 403 && (data?.code === 'VERIFICATION_REQUIRED' || data?.message?.includes('verification required'))) {
+      // Import store dynamically to avoid circular dependencies
+      import('@/store/uiStore').then(({ useUIStore }) => {
+        useUIStore.getState().openModal('verificationRequired', { message: data.message });
+      });
     }
     return Promise.reject(error);
   }
