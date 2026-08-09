@@ -3,6 +3,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { ReactionPicker } from '@/components/ui/ReactionPicker';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { postService } from '@/services/postService';
@@ -88,20 +89,24 @@ export function CommentsModal() {
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState(null); // { id, username }
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState(null);
   const inputRef = useRef(null);
 
   const isOpen = activeModal === 'comments';
-  const post = activeModalData;
+  const targetPostId = typeof activeModalData === 'string'
+    ? activeModalData
+    : activeModalData?.id || activeModalData?.postId || activeModalData?.post?.id || null;
 
   // Load comments when modal opens
   useEffect(() => {
-    if (!isOpen || !post?.id) return;
+    if (!isOpen || !targetPostId) return;
     let cancelled = false;
 
     const load = async () => {
       setIsLoading(true);
+      setCommentError(null);
       try {
-        const result = await postService.getComments(post.id);
+        const result = await postService.getComments(targetPostId);
         if (!cancelled) setComments(result.data || []);
       } catch {}
       finally {
@@ -112,12 +117,13 @@ export function CommentsModal() {
     setComments([]);
     load();
     return () => { cancelled = true; };
-  }, [isOpen, post?.id]);
+  }, [isOpen, targetPostId]);
 
   const handleClose = () => {
     closeModal();
     setText('');
     setReplyTo(null);
+    setCommentError(null);
   };
 
   const handleReplyTo = (comment) => {
@@ -127,11 +133,12 @@ export function CommentsModal() {
   };
 
   const handleSubmit = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !targetPostId) return;
     setIsSubmitting(true);
+    setCommentError(null);
     try {
       const newComment = await postService.addComment(
-        post.id,
+        targetPostId,
         text.trim(),
         replyTo?.id ?? null
       );
@@ -143,18 +150,29 @@ export function CommentsModal() {
       setText('');
       setReplyTo(null);
     } catch (err) {
-      console.error('Failed to post comment:', getErrorMessage(err));
+      const errorMsg = getErrorMessage(err);
+      setCommentError(errorMsg);
+      console.error('Failed to post comment:', errorMsg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (commentId) => {
+  const [deleteTargetCommentId, setDeleteTargetCommentId] = useState(null);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
+
+  const confirmDeleteComment = async () => {
+    if (!deleteTargetCommentId) return;
+    setIsDeletingComment(true);
+    const commentId = deleteTargetCommentId;
     setComments((prev) => removeCommentFromTree(prev, commentId));
     try {
       await postService.deleteComment(commentId);
+      setDeleteTargetCommentId(null);
     } catch (err) {
       console.error('Failed to delete comment:', getErrorMessage(err));
+    } finally {
+      setIsDeletingComment(false);
     }
   };
 
@@ -178,68 +196,86 @@ export function CommentsModal() {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Comments" size="md">
-      <div className="flex flex-col h-[520px] max-h-[80vh]">
-        {/* Comments List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : comments.length === 0 ? (
-            <p className="text-center text-sm text-neutral-400 py-8">
-              No comments yet. Be the first to comment!
-            </p>
-          ) : (
-            comments.map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                currentUserId={user?.id || getCurrentUserId()}
-                onDelete={handleDelete}
-                onReact={handleReact}
-                onReply={handleReplyTo}
-                onLoadReplies={handleLoadReplies}
-                postId={post?.id}
-                depth={0}
-              />
-            ))
-          )}
-        </div>
+    <>
+      <Modal isOpen={isOpen} onClose={handleClose} title="Comments" size="md">
+        <div className="flex flex-col h-[520px] max-h-[80vh]">
+          {/* Comments List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : comments.length === 0 ? (
+              <p className="text-center text-sm text-neutral-400 py-8">
+                No comments yet. Be the first to comment!
+              </p>
+            ) : (
+              comments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user?.id || getCurrentUserId()}
+                  onDelete={(id) => setDeleteTargetCommentId(id)}
+                  onReact={handleReact}
+                  onReply={handleReplyTo}
+                  onLoadReplies={handleLoadReplies}
+                  postId={targetPostId}
+                  depth={0}
+                />
+              ))
+            )}
+          </div>
 
-        {/* Input bar */}
-        <div className="border-t border-neutral-100 dark:border-neutral-800 p-4">
-          {replyTo && (
-            <div className="flex items-center justify-between mb-2 text-xs text-neutral-500 bg-neutral-50 dark:bg-neutral-800/60 rounded-lg px-3 py-1.5">
-              <span>Replying to <strong>@{replyTo.username}</strong></span>
-              <button onClick={() => { setReplyTo(null); setText(''); }} className="hover:text-red-400">×</button>
+          {/* Input bar */}
+          <div className="border-t border-neutral-100 dark:border-neutral-800 p-4">
+            {commentError && (
+              <p className="text-xs text-red-500 font-semibold mb-2.5 bg-red-50 dark:bg-red-950/40 p-2.5 rounded-xl border border-red-200 dark:border-red-900/50">
+                {commentError}
+              </p>
+            )}
+            {replyTo && (
+              <div className="flex items-center justify-between mb-2 text-xs text-neutral-500 bg-neutral-50 dark:bg-neutral-800/60 rounded-lg px-3 py-1.5">
+                <span>Replying to <strong>@{replyTo.username}</strong></span>
+                <button onClick={() => { setReplyTo(null); setText(''); }} className="hover:text-red-400">×</button>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <Avatar src={user?.avatar} name={user?.displayName || user?.username} size="sm" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+                placeholder="Write a comment..."
+                className="flex-1 bg-neutral-100 dark:bg-neutral-800 rounded-full px-4 py-2 text-sm outline-none placeholder:text-neutral-400 text-neutral-800 dark:text-neutral-100"
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSubmit}
+                isLoading={isSubmitting}
+                disabled={!text.trim()}
+                className="!rounded-full !px-3"
+              >
+                <Send size={14} />
+              </Button>
             </div>
-          )}
-          <div className="flex items-center gap-3">
-            <Avatar src={user?.avatar} name={user?.displayName || user?.username} size="sm" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-              placeholder="Write a comment..."
-              className="flex-1 bg-neutral-100 dark:bg-neutral-800 rounded-full px-4 py-2 text-sm outline-none placeholder:text-neutral-400 text-neutral-800 dark:text-neutral-100"
-            />
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSubmit}
-              isLoading={isSubmitting}
-              disabled={!text.trim()}
-              className="!rounded-full !px-3"
-            >
-              <Send size={14} />
-            </Button>
           </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+
+      {/* Confirmation Modal for Comment Deletion */}
+      <ConfirmModal
+        isOpen={!!deleteTargetCommentId}
+        onClose={() => setDeleteTargetCommentId(null)}
+        onConfirm={confirmDeleteComment}
+        title="Delete Comment"
+        description="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmText="Delete"
+        isLoading={isDeletingComment}
+      />
+    </>
   );
 }
 

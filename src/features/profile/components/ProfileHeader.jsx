@@ -5,12 +5,14 @@ import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
+import { useBlockStore } from '@/store/blockStore';
 import { userService } from '@/services/userService';
 import { getErrorMessage } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
-import { MessageCircle, ShieldAlert, Check } from 'lucide-react';
+import { MessageCircle, ShieldAlert, Check, Ban } from 'lucide-react';
 import { OTPModal } from '@/features/auth/components/OTPModal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
   const [followState, setFollowState] = useState(
@@ -52,11 +54,33 @@ export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
     navigate(ROUTES.MESSAGES);
   };
 
+  const { blockedUserIds, blockUser, unblockUser } = useBlockStore();
+  const isBlocked = user?.id ? blockedUserIds.includes(user.id) : false;
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [isBlockLoading, setIsBlockLoading] = useState(false);
+
+  const handleToggleBlock = async () => {
+    if (!user) return;
+    setIsBlockLoading(true);
+    try {
+      if (isBlocked) {
+        await unblockUser(user.id);
+      } else {
+        await blockUser(user.id);
+        setShowBlockConfirm(false);
+      }
+    } catch (err) {
+      console.error('Failed to toggle block:', err);
+    } finally {
+      setIsBlockLoading(false);
+    }
+  };
+
   return (
     <div>
       {/* Cover image */}
       <div className="h-48 bg-gradient-to-br from-primary-400 to-tertiary-500 relative overflow-hidden">
-        {user?.coverImage && (
+        {user?.coverImage && !isBlocked && (
           <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
         )}
       </div>
@@ -68,6 +92,7 @@ export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
             src={user?.avatar}
             name={user?.displayName || user?.username}
             size="xl"
+            userId={user?.id}
             hasStory={user?.hasStory}
             isVerified={user?.isVerified}
             className="ring-4 ring-white dark:ring-[#1A1D27]"
@@ -90,23 +115,48 @@ export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Button
-                variant="outlined"
-                size="sm"
-                onClick={handleStartMessage}
-                className="flex items-center gap-1.5"
-              >
-                <MessageCircle size={14} />
-                Message
-              </Button>
-              <Button
-                variant={followState !== 'none' ? 'outlined' : 'primary'}
-                size="sm"
-                isLoading={isFollowingLoading}
-                onClick={handleFollowToggle}
-              >
-                {getButtonLabel()}
-              </Button>
+              {!isBlocked && (
+                <>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={handleStartMessage}
+                    className="flex items-center gap-1.5"
+                  >
+                    <MessageCircle size={14} />
+                    Message
+                  </Button>
+                  <Button
+                    variant={followState !== 'none' ? 'outlined' : 'primary'}
+                    size="sm"
+                    isLoading={isFollowingLoading}
+                    onClick={handleFollowToggle}
+                  >
+                    {getButtonLabel()}
+                  </Button>
+                </>
+              )}
+              {isBlocked ? (
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  isLoading={isBlockLoading}
+                  onClick={handleToggleBlock}
+                  className="text-neutral-700 dark:text-neutral-200"
+                >
+                  Unblock
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowBlockConfirm(true)}
+                  className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 p-2"
+                  title="Block User"
+                >
+                  <Ban size={16} />
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -170,6 +220,17 @@ export function ProfileHeader({ user, isOwn, onOpenFollowList }) {
       <OTPModal
         isOpen={isOTPModalOpen}
         onClose={() => setIsOTPModalOpen(false)}
+      />
+
+      {/* Confirm Block Modal */}
+      <ConfirmModal
+        isOpen={showBlockConfirm}
+        onClose={() => setShowBlockConfirm(false)}
+        onConfirm={handleToggleBlock}
+        title={`Block @${user?.username}?`}
+        description="They will not be able to view your profile, posts, or message you. You also won't see their posts."
+        confirmText="Block User"
+        isLoading={isBlockLoading}
       />
     </div>
   );

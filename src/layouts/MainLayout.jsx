@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useUIStore } from '@/store/uiStore';
+import { useBlockStore } from '@/store/blockStore';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { RightPanel } from './RightPanel';
@@ -25,7 +27,12 @@ import { VerificationRequiredModal } from '@/features/auth/components/Verificati
  */
 export function MainLayout({ children, showRightPanel = true }) {
   const { sidebarOpen } = useUIStore();
+  const fetchBlockedUsers = useBlockStore((state) => state.fetchBlockedUsers);
   useNotificationSSE();
+
+  useEffect(() => {
+    fetchBlockedUsers();
+  }, [fetchBlockedUsers]);
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-primary)]">

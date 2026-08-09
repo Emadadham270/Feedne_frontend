@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { chatService } from '@/services/chatService';
 import { CONFIG } from '@/constants/config';
+import { useBlockStore } from './blockStore';
 
 /** Returns the current user's ID from persisted auth store */
 const getCurrentUserId = () => {
@@ -172,6 +173,10 @@ export const useChatStore = create((set, get) => ({
   },
 
   startConversation: async (user) => {
+    if (useBlockStore.getState().isBlocked(user.id)) {
+      alert("You cannot message a user you have blocked.");
+      return;
+    }
     const convId = user.id;
     set((s) => {
       const exists = s.conversations.some((c) => c.id === convId);
@@ -219,6 +224,10 @@ export const useChatStore = create((set, get) => ({
   // ── Send Message ───────────────────────────────────────────────────────────
 
   sendMessage: async (conversationId, text, file = null) => {
+    if (useBlockStore.getState().isBlocked(conversationId)) {
+      alert("You cannot send messages to a user you have blocked.");
+      return;
+    }
     const currentUserId = getCurrentUserId();
     set({ isSending: true });
 

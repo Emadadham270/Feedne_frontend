@@ -3,12 +3,15 @@ import { postService } from '@/services/postService';
 import { mapPost, mapPosts } from '@/lib/postMapper';
 import { CONFIG } from '@/constants/config';
 import { getErrorMessage } from '@/services/api';
+import { useGroupStore } from './groupStore';
 
 /** Returns the current user ID from the persisted auth store. */
 const getCurrentUserId = () => {
   try {
     const raw = localStorage.getItem(CONFIG.USER_KEY);
-    return JSON.parse(raw)?.state?.user?.id ?? null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.user?.id ?? null;
   } catch {
     return null;
   }
@@ -142,11 +145,13 @@ export const usePostStore = create((set, get) => ({
     };
 
     const state = get();
+    const groupState = useGroupStore.getState();
     const post = findPost([
       state.feedPosts,
       state.explorePosts,
       state.trendingPosts,
       state.savedPosts,
+      groupState.activeGroupPosts,
     ]);
 
     const prevReactions = post?.reactions ?? [];
@@ -187,6 +192,10 @@ export const usePostStore = create((set, get) => ({
       savedPosts:    updateList(s.savedPosts),
     }));
 
+    useGroupStore.setState((s) => ({
+      activeGroupPosts: updateList(s.activeGroupPosts),
+    }));
+
     try {
       if (!type) {
         await postService.unlikePost(postId);
@@ -202,6 +211,9 @@ export const usePostStore = create((set, get) => ({
         explorePosts:  state.explorePosts,
         trendingPosts: state.trendingPosts,
         savedPosts:    state.savedPosts,
+      }));
+      useGroupStore.setState(() => ({
+        activeGroupPosts: groupState.activeGroupPosts,
       }));
     }
   },

@@ -9,6 +9,8 @@ import { useGroupStore } from '@/store/groupStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { groupService } from '@/services/groupService';
+import { timeAgo } from '@/lib/dateUtils';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import {
   Users,
   Globe,
@@ -19,6 +21,8 @@ import {
   PlusCircle,
   Shield,
   MessageSquare,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 
 export function GroupPage() {
@@ -34,10 +38,18 @@ export function GroupPage() {
     selectGroup,
     joinGroup,
     leaveGroup,
+    updateMemberRole,
+    removeMember,
   } = useGroupStore();
 
-  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'members'
-  const [copyFeedback, setCopyFeedback] = useState('');
+  const [activeTab, setActiveTab] = useState('posts'); // 'posts' | 'members'
+  const [inviteCode, setInviteCode] = useState(null);
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [removeTargetMemberId, setRemoveTargetMemberId] = useState(null);
+  const [makeAdminTargetMemberId, setMakeAdminTargetMemberId] = useState(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   useEffect(() => {
     if (groupId) {
@@ -45,157 +57,229 @@ export function GroupPage() {
     }
   }, [groupId, selectGroup]);
 
-  const generateInviteLink = async () => {
-    try {
-      const invite = await groupService.generateInviteCode(groupId, 24);
-      const fullUrl = `${window.location.origin}/groups/join/${invite.code}`;
-      await navigator.clipboard.writeText(fullUrl);
-      setCopyFeedback('Invite link copied to clipboard!');
-      setTimeout(() => setCopyFeedback(''), 3000);
-    } catch (err) {
-      console.error('Invite link generation failed:', err);
-    }
-  };
-
-  const handleCreatePost = () => {
-    openModal('createPost', { group: activeGroup });
-  };
-
-  if (isLoadingActiveGroup || !activeGroup) {
+  if (isLoadingActiveGroup) {
     return (
-      <MainLayout>
-        <div className="flex justify-center py-20">
-          <Spinner />
+      <MainLayout showRightPanel={false}>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Spinner size="lg" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!activeGroup) {
+    return (
+      <MainLayout showRightPanel={false}>
+        <div className="card p-12 text-center max-w-md mx-auto my-12 space-y-4">
+          <Users size={48} className="mx-auto text-neutral-400" />
+          <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Group Not Found</h2>
+          <p className="text-xs text-neutral-400">The group you're looking for doesn't exist or was removed.</p>
+          <Button variant="primary" size="sm" onClick={() => navigate('/')}>
+            Back to Home
+          </Button>
         </div>
       </MainLayout>
     );
   }
 
   const isMember = activeGroup.isMember;
-  const isPrivate = activeGroup.type === 'PRIVATE';
+  const isAdmin = activeGroup.memberRole === 'ADMIN';
+
+  const handleJoin = async () => {
+    await joinGroup(activeGroup.id);
+  };
+
+
+
+  const confirmLeaveGroup = async () => {
+    setIsActionLoading(true);
+    try {
+      await leaveGroup(activeGroup.id);
+      setShowLeaveConfirm(false);
+    } catch (err) {
+      alert(err.message || 'Failed to leave group');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleCreatePost = () => {
+    openModal('createPost', { defaultGroupId: activeGroup.id });
+  };
+
+  const handleGenerateInvite = async () => {
+    setIsGeneratingInvite(true);
+    try {
+      const res = await groupService.generateInviteCode(activeGroup.id, 24);
+      setInviteCode(res.inviteUrl);
+    } catch (err) {
+      console.error('Failed to generate invite:', err);
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  };
+
+  const handleCopyInvite = () => {
+    if (!inviteCode) return;
+    const fullUrl = `${window.location.origin}${inviteCode}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const confirmMakeAdmin = async () => {
+    if (!makeAdminTargetMemberId) return;
+    setIsActionLoading(true);
+    try {
+      await updateMemberRole(activeGroup.id, makeAdminTargetMemberId, 'ADMIN');
+      setMakeAdminTargetMemberId(null);
+    } catch (err) {
+      alert(err.message || 'Failed to make admin');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!removeTargetMemberId) return;
+    setIsActionLoading(true);
+    try {
+      await removeMember(activeGroup.id, removeTargetMemberId);
+      setRemoveTargetMemberId(null);
+    } catch (err) {
+      alert(err.message || 'Failed to remove member');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   return (
     <MainLayout showRightPanel={false}>
-      <div className="max-w-3xl mx-auto pb-12 animate-fade-in">
-        {/* Cover / Header Banner */}
-        <div className="h-48 bg-gradient-to-r from-primary-500 via-secondary-500 to-tertiary-500 rounded-b-3xl relative overflow-hidden">
-          {activeGroup.backUrl && (
-            <img src={activeGroup.backUrl} alt="Cover" className="w-full h-full object-cover" />
-          )}
-        </div>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        {/* Header Banner & Group Info */}
+        <div className="card overflow-hidden">
+          {/* Banner cover */}
+          <div className="h-44 bg-gradient-to-r from-primary-600 via-tertiary-600 to-indigo-600 relative">
+            {activeGroup.imgUrl && (
+              <img
+                src={activeGroup.imgUrl}
+                alt={activeGroup.name}
+                className="w-full h-full object-cover opacity-60"
+              />
+            )}
+          </div>
 
-        {/* Group Info Header */}
-        <div className="px-6 pb-4 bg-white dark:bg-[#1A1D27] rounded-b-3xl shadow-sm -mt-6 pt-0 border-b border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-end justify-between -mt-10 mb-4">
-            <Avatar
-              src={activeGroup.imgUrl}
-              name={activeGroup.name}
-              size="xl"
-              className="ring-4 ring-white dark:ring-[#1A1D27]"
-            />
+          {/* Details Bar */}
+          <div className="p-6 pt-0 relative flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-end gap-4 -mt-12">
+              <Avatar
+                src={activeGroup.imgUrl}
+                name={activeGroup.name}
+                size="xl"
+                className="ring-4 ring-white dark:ring-neutral-900 shadow-xl"
+              />
+              <div className="space-y-1 mb-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-white">
+                    {activeGroup.name}
+                  </h1>
+                  {activeGroup.type === 'PRIVATE' ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 flex items-center gap-1">
+                      <Lock size={12} /> Private
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <Globe size={12} /> Public
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-400">
+                  {activeGroup.memberCount ?? activeGroup._count?.members ?? 1} Members
+                </p>
+              </div>
+            </div>
 
-            <div className="flex items-center gap-2">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 mb-1">
               {isMember ? (
                 <>
-                  <Button variant="primary" size="sm" onClick={handleCreatePost}>
-                    <PlusCircle size={16} className="mr-1.5" />
-                    Create Post
+                  <Button variant="primary" size="sm" onClick={handleCreatePost} className="gap-1.5">
+                    <PlusCircle size={16} /> Create Post
                   </Button>
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={() => leaveGroup(activeGroup.id)}
-                    className="!text-red-500 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
-                  >
-                    <LogOut size={14} className="mr-1.5" />
-                    Leave Group
+                  {isAdmin && (
+                    <Button
+                      variant="outlined"
+                      size="sm"
+                      onClick={handleGenerateInvite}
+                      isLoading={isGeneratingInvite}
+                      className="gap-1.5"
+                    >
+                      <LinkIcon size={16} /> Invite
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => setShowLeaveConfirm(true)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
+                    <LogOut size={16} />
                   </Button>
                 </>
               ) : (
-                <Button variant="primary" size="sm" onClick={() => joinGroup(activeGroup.id)}>
-                  <UserPlus size={16} className="mr-1.5" />
-                  Join Group
-                </Button>
-              )}
-
-              {/* Invite link button for members */}
-              {isMember && (
-                <Button variant="outlined" size="sm" onClick={generateInviteLink}>
-                  <LinkIcon size={14} className="mr-1.5" />
-                  Invite
+                <Button variant="primary" size="sm" onClick={handleJoin} className="gap-1.5">
+                  <UserPlus size={16} /> Join Group
                 </Button>
               )}
             </div>
           </div>
 
-          {copyFeedback && (
-            <div className="mb-3 px-3 py-1.5 bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 text-xs font-medium rounded-xl border border-green-200 dark:border-green-900 flex items-center justify-between">
-              <span>{copyFeedback}</span>
-            </div>
-          )}
+          {/* Group Description & Invite link display */}
+          <div className="p-6 space-y-4">
+            {activeGroup.bio && (
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">{activeGroup.bio}</p>
+            )}
 
-          <div className="mb-3">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                {activeGroup.name}
-              </h1>
-              <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-                {isPrivate ? <Lock size={12} /> : <Globe size={12} />}
-                {activeGroup.type}
-              </span>
-            </div>
-            <p className="text-xs text-neutral-500 mt-1">
-              {activeGroup.memberCount ?? activeGroup._count?.members ?? 1} members · {activeGroup.postsCount ?? activeGroup._count?.posts ?? 0} posts
-            </p>
-          </div>
-
-          {activeGroup.bio && (
-            <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
-              {activeGroup.bio}
-            </p>
-          )}
-
-          {/* Group Tabs */}
-          <div className="flex border-b border-neutral-100 dark:border-neutral-800 pt-2 gap-6">
-            <button
-              onClick={() => setActiveTab('feed')}
-              className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === 'feed'
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
-              }`}
-            >
-              <MessageSquare size={16} />
-              <span>Group Feed ({activeGroupPosts.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('members')}
-              className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === 'members'
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
-              }`}
-            >
-              <Users size={16} />
-              <span>Members ({activeGroupMembers.length})</span>
-            </button>
+            {inviteCode && (
+              <div className="flex items-center gap-3 bg-neutral-100 dark:bg-neutral-800 p-3 rounded-xl">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}${inviteCode}`}
+                  className="bg-transparent text-xs font-mono text-neutral-800 dark:text-neutral-200 flex-1 outline-none truncate"
+                />
+                <Button size="xs" variant="primary" onClick={handleCopyInvite}>
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Tab Content */}
-        <div className="mt-6">
-          {/* FEED TAB */}
-          {activeTab === 'feed' && (
+        {/* Group Tabs */}
+        <div className="space-y-4">
+          <div className="flex border-b border-neutral-200 dark:border-neutral-800 gap-6 text-sm font-semibold">
+            <button
+              onClick={() => setActiveTab('posts')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'posts'
+                  ? 'border-primary-500 text-primary-500 font-bold'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+              }`}
+            >
+              Posts
+            </button>
+            <button
+              onClick={() => setActiveTab('members')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'members'
+                  ? 'border-primary-500 text-primary-500 font-bold'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+              }`}
+            >
+              Members ({activeGroupMembers.length})
+            </button>
+          </div>
+
+          {/* POSTS TAB */}
+          {activeTab === 'posts' && (
             <div className="space-y-4">
-              {isPrivate && !isMember ? (
-                <div className="card p-12 text-center">
-                  <Lock size={40} className="mx-auto text-neutral-400 mb-3" />
-                  <h3 className="font-bold text-neutral-900 dark:text-white text-lg">Private Group</h3>
-                  <p className="text-sm text-neutral-500 mt-1 max-w-sm mx-auto">
-                    You must join this group using an invite code to view its feed and posts.
-                  </p>
-                </div>
-              ) : activeGroupPosts.length === 0 ? (
+              {activeGroupPosts.length === 0 ? (
                 <div className="card p-12 text-center">
                   <MessageSquare size={40} className="mx-auto text-neutral-300 mb-3" />
                   <p className="text-neutral-500 text-sm font-medium">No posts in this group yet.</p>
@@ -234,10 +318,37 @@ export function GroupPage() {
                       </div>
                     </div>
 
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 flex items-center gap-1">
-                      {m.role === 'ADMIN' && <Shield size={12} />}
-                      {m.role}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 flex items-center gap-1">
+                        {m.role === 'ADMIN' && <Shield size={12} />}
+                        {m.role}
+                      </span>
+
+                      {isAdmin && m.user?.id !== user?.id && (
+                        <div className="flex items-center gap-1.5 ml-2">
+                          {m.role !== 'ADMIN' && (
+                            <Button
+                              size="xs"
+                              variant="outlined"
+                              onClick={() => setMakeAdminTargetMemberId(m.user.id)}
+                              className="text-xs gap-1"
+                              title="Make Admin"
+                            >
+                              <UserCheck size={12} /> Make Admin
+                            </Button>
+                          )}
+                          <Button
+                            size="xs"
+                            variant="danger"
+                            onClick={() => setRemoveTargetMemberId(m.user.id)}
+                            className="text-xs gap-1"
+                            title="Remove Member"
+                          >
+                            <UserX size={12} /> Remove
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -245,6 +356,38 @@ export function GroupPage() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modals */}
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={confirmLeaveGroup}
+        title="Leave Group"
+        description="Are you sure you want to leave this group?"
+        confirmText="Leave Group"
+        isLoading={isActionLoading}
+      />
+
+      <ConfirmModal
+        isOpen={!!removeTargetMemberId}
+        onClose={() => setRemoveTargetMemberId(null)}
+        onConfirm={confirmRemoveMember}
+        title="Remove Member"
+        description="Are you sure you want to remove this member from the group?"
+        confirmText="Remove Member"
+        isLoading={isActionLoading}
+      />
+
+      <ConfirmModal
+        isOpen={!!makeAdminTargetMemberId}
+        onClose={() => setMakeAdminTargetMemberId(null)}
+        onConfirm={confirmMakeAdmin}
+        title="Make Group Admin"
+        description="Are you sure you want to promote this member to Group Admin?"
+        confirmText="Make Admin"
+        variant="primary"
+        isLoading={isActionLoading}
+      />
     </MainLayout>
   );
 }

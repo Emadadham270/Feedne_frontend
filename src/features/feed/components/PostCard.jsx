@@ -5,6 +5,7 @@ import { ReactionPicker } from '@/components/ui/ReactionPicker';
 import { usePostStore } from '@/store/postStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
+import { useBlockStore } from '@/store/blockStore';
 import { formatCount } from '@/lib/utils';
 import { timeAgo } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
@@ -16,8 +17,14 @@ export function PostCard({ post, isInsideModal = false }) {
   const { toggleReaction, toggleBookmark } = usePostStore();
   const { openModal }  = useUIStore();
   const { user }       = useAuthStore();
+  const { blockedUserIds } = useBlockStore();
   const navigate       = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // If author is blocked by current user, don't show the post
+  if (post?.author?.id && blockedUserIds.includes(post.author.id)) {
+    return null;
+  }
 
   const postId      = post.id;
   const authorName  = post.author?.username || post.author?.displayName || 'Unknown';
@@ -191,7 +198,7 @@ export function PostCard({ post, isInsideModal = false }) {
           />
 
           <button
-            onClick={(e) => { e.stopPropagation(); openModal('comments', { postId }); }}
+            onClick={(e) => { e.stopPropagation(); openModal('comments', post); }}
             className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-primary-500 transition-colors"
           >
             <MessageCircle size={18} />

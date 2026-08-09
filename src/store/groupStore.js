@@ -156,4 +156,31 @@ export const useGroupStore = create((set, get) => ({
       throw new Error(msg);
     }
   },
+
+  updateMemberRole: async (groupId, memberUserId, role) => {
+    try {
+      await groupService.updateMemberRole(groupId, memberUserId, role);
+      set((state) => ({
+        activeGroupMembers: state.activeGroupMembers.map((m) =>
+          m.user?.id === memberUserId ? { ...m, role } : m
+        ),
+      }));
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
+
+  removeMember: async (groupId, memberUserId) => {
+    try {
+      await groupService.removeMember(groupId, memberUserId);
+      set((state) => ({
+        activeGroupMembers: state.activeGroupMembers.filter((m) => m.user?.id !== memberUserId),
+        activeGroup: state.activeGroup?.id === groupId
+          ? { ...state.activeGroup, memberCount: Math.max(0, (state.activeGroup.memberCount || 1) - 1) }
+          : state.activeGroup,
+      }));
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
 }));

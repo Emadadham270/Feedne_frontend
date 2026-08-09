@@ -1,11 +1,15 @@
 import { cn, getInitials } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import { useBlockStore } from '@/store/blockStore';
 
 /**
  * Avatar component with optional story ring, online dot, verified checkmark badge, and size variants.
- * @param {{ src?: string, name?: string, size?: 'xs'|'sm'|'md'|'lg'|'xl', hasStory?: boolean, isOnline?: boolean, isVerified?: boolean, className?: string, onClick?: Function }} props
+ * @param {{ src?: string, name?: string, size?: 'xs'|'sm'|'md'|'lg'|'xl', hasStory?: boolean, isOnline?: boolean, isVerified?: boolean, userId?: string, className?: string, onClick?: Function }} props
  */
-export function Avatar({ src, name = '', size = 'md', hasStory = false, isOnline = false, isVerified = false, className, onClick }) {
+export function Avatar({ src, name = '', size = 'md', hasStory = false, isOnline = false, isVerified = false, userId, className, onClick }) {
+  const { blockedUserIds } = useBlockStore();
+  const isBlocked = userId ? blockedUserIds.includes(userId) : false;
+  const displaySrc = isBlocked ? null : src;
   const sizes = {
     xs: 'w-6 h-6 text-[10px]',
     sm: 'w-8 h-8 text-xs',
@@ -38,8 +42,8 @@ export function Avatar({ src, name = '', size = 'md', hasStory = false, isOnline
         hasStory && 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-[#1A1D27]',
         onClick && 'cursor-pointer hover:opacity-90 transition-opacity',
       )}>
-        {src ? (
-          <img src={src} alt={name} className="w-full h-full object-cover" />
+        {displaySrc ? (
+          <img src={displaySrc} alt={name} className="w-full h-full object-cover" />
         ) : (
           <span className="font-semibold text-white">{getInitials(name)}</span>
         )}

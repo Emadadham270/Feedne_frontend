@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Heart, MessageCircle, LayoutList, Grid } from 'lucide-react';
+import { Heart, MessageCircle, LayoutList, Grid, Bookmark, Image as ImageIcon } from 'lucide-react';
 import { formatCount } from '@/lib/utils';
 import { postService } from '@/services/postService';
 import { mapPosts } from '@/lib/postMapper';
@@ -17,24 +17,32 @@ const getCurrentUserId = () => {
   }
 };
 
-export function ProfilePostGrid({ userId }) {
+export function ProfilePostGrid({ userId, isOwn = false }) {
   const [posts, setPosts]       = useState([]);
   const [isLoading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState('feed'); // 'feed' (landing page style) | 'grid'
+  const [activeTab, setActiveTab] = useState('posts'); // 'posts' | 'saved'
+  const [viewMode, setViewMode] = useState('feed'); // 'feed' | 'grid'
   const { openModal }           = useUIStore();
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId && activeTab !== 'saved') return;
     let cancelled = false;
 
     const load = async () => {
       setLoading(true);
       try {
-        const { posts: raw } = await postService.getUserPosts(userId);
-        const currentUserId  = getCurrentUserId();
+        let raw = [];
+        if (activeTab === 'saved') {
+          const res = await postService.getSavedPosts();
+          raw = res.posts || [];
+        } else {
+          const res = await postService.getUserPosts(userId);
+          raw = res.posts || [];
+        }
+        const currentUserId = getCurrentUserId();
         if (!cancelled) setPosts(mapPosts(raw, currentUserId));
       } catch (err) {
-        console.error('Failed to load user posts:', err);
+        console.error(`Failed to load ${activeTab}:`, err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -42,32 +50,43 @@ export function ProfilePostGrid({ userId }) {
 
     load();
     return () => { cancelled = true; };
-  }, [userId]);
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (!posts.length) {
-    return (
-      <EmptyState
-        title="No posts yet"
-        description="When this user posts something, it will appear here."
-      />
-    );
-  }
+  }, [userId, activeTab]);
 
   return (
     <div className="space-y-4 pt-2">
-      {/* View mode toggle */}
+      {/* Tab Switcher & View Mode Toggle */}
       <div className="flex items-center justify-between px-2 pb-2 border-b border-neutral-100 dark:border-neutral-800">
-        <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-          Posts ({posts.length})
-        </span>
+        {isOwn ? (
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setActiveTab('posts')}
+              className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-1.5 transition-colors border-b-2 ${
+                activeTab === 'posts'
+                  ? 'border-primary-500 text-primary-500'
+                  : 'border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+              }`}
+            >
+              <ImageIcon size={14} />
+              Posts ({activeTab === 'posts' ? posts.length : '…'})
+            </button>
+            <button
+              onClick={() => setActiveTab('saved')}
+              className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-1.5 transition-colors border-b-2 ${
+                activeTab === 'saved'
+                  ? 'border-primary-500 text-primary-500'
+                  : 'border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+              }`}
+            >
+              <Bookmark size={14} />
+              Saved ({activeTab === 'saved' ? posts.length : '…'})
+            </button>
+          </div>
+        ) : (
+          <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+            Posts ({posts.length})
+          </span>
+        )}
+
         <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
           <button
             onClick={() => setViewMode('feed')}
@@ -76,7 +95,7 @@ export function ProfilePostGrid({ userId }) {
                 ? 'bg-white dark:bg-neutral-700 text-primary-500 shadow-xs'
                 : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
             }`}
-            title="Feed View (Landing Page Style)"
+            title="Feed View"
           >
             <LayoutList size={16} />
           </button>
@@ -94,8 +113,21 @@ export function ProfilePostGrid({ userId }) {
         </div>
       </div>
 
-      {viewMode === 'feed' ? (
-        /* Landing Page Style Feed Stream */
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Spinner />
+        </div>
+      ) : !posts.length ? (
+        <EmptyState
+          title={activeTab === 'saved' ? 'No saved posts' : 'No posts yet'}
+          description={
+            activeTab === 'saved'
+              ? 'Bookmark posts to save them for later.'
+              : 'When this user posts something, it will appear here.'
+          }
+        />
+      ) : viewMode === 'feed' ? (
+        /* Feed View Stream */
         <div className="space-y-4">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />

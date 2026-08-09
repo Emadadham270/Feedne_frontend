@@ -81,4 +81,16 @@ export const groupService = {
     });
     return response.data;
   },
+
+  /** PATCH /api/groups/:groupId/members/:userId/role */
+  async updateMemberRole(groupId, userId, role) {
+    const response = await api.patch(`/groups/${groupId}/members/${userId}/role`, { role });
+    return response.data;
+  },
+
+  /** DELETE /api/groups/:groupId/members/:userId */
+  async removeMember(groupId, userId) {
+    const response = await api.delete(`/groups/${groupId}/members/${userId}`);
+    return response.data;
+  },
 };

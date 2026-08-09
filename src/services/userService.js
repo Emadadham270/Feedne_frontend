@@ -91,6 +91,12 @@ export const userService = {
 
   // ── Block / Unblock ─────────────────────────────────────────────────────────
 
+  /** GET /api/users/me/blocked */
+  async getBlockedUsers() {
+    const response = await api.get('/users/me/blocked');
+    return response.data;
+  },
+
   /** POST /api/users/:userId/block */
   async blockUser(userId) {
     const response = await api.post(`/users/${userId}/block`);

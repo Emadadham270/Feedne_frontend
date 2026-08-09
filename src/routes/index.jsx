@@ -5,6 +5,7 @@ import { AdminRoute } from './AdminRoute';
 import { ROUTE_PATHS } from './routes.constants';
 import { Spinner } from '@/components/ui/Skeleton';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { RouteErrorElement } from '@/components/shared/RouteErrorElement';
 import { OfflineDetector } from '@/components/shared/OfflineDetector';
 import { useAuthStore } from '@/store/authStore';
 
@@ -46,22 +47,27 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <Suspense fallback={<PageFallback />}><RootIndex /></Suspense>,
+    errorElement: <RouteErrorElement />,
   },
   {
     path: ROUTE_PATHS.LANDING,
     element: <Suspense fallback={<PageFallback />}><LandingPage /></Suspense>,
+    errorElement: <RouteErrorElement />,
   },
   {
     path: '/welcome',
     element: <Suspense fallback={<PageFallback />}><LandingPage /></Suspense>,
+    errorElement: <RouteErrorElement />,
   },
   {
     path: ROUTE_PATHS.LOGIN,
     element: <Suspense fallback={<PageFallback />}><LoginPage /></Suspense>,
+    errorElement: <RouteErrorElement />,
   },
   {
     path: ROUTE_PATHS.SIGNUP,
     element: <Suspense fallback={<PageFallback />}><SignupPage /></Suspense>,
+    errorElement: <RouteErrorElement />,
   },
 
   // Explicit Error Pages
@@ -73,42 +79,52 @@ const router = createBrowserRouter([
   // Protected routes
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorElement />,
     children: [
       {
         path: '/feed',
         element: <Suspense fallback={<PageFallback />}><HomePage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.EXPLORE,
         element: <Suspense fallback={<PageFallback />}><ExplorePage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.TRENDING,
         element: <Suspense fallback={<PageFallback />}><TrendingPage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.PROFILE,
         element: <Suspense fallback={<PageFallback />}><ProfilePage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.SETTINGS,
         element: <Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.MESSAGES,
         element: <Suspense fallback={<PageFallback />}><MessagesPage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.NOTIFICATIONS,
         element: <Suspense fallback={<PageFallback />}><NotificationsPage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.GROUP,
         element: <Suspense fallback={<PageFallback />}><GroupPage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
       {
         path: ROUTE_PATHS.GROUP_JOIN,
         element: <Suspense fallback={<PageFallback />}><JoinGroupPage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
     ],
   },
@@ -116,10 +132,12 @@ const router = createBrowserRouter([
   // Admin-only routes
   {
     element: <AdminRoute />,
+    errorElement: <RouteErrorElement />,
     children: [
       {
         path: ROUTE_PATHS.ADMIN,
         element: <Suspense fallback={<PageFallback />}><AdminPage /></Suspense>,
+        errorElement: <RouteErrorElement />,
       },
     ],
   },
