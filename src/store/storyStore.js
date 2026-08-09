@@ -8,6 +8,20 @@ export const useStoryStore = create((set, get) => ({
   isLoading: false,
   isUploading: false,
   error: null,
+  viewedStoryIds: new Set(JSON.parse(localStorage.getItem('viewedStories') || '[]')),
+
+  markStoryViewed: (storyId) => {
+    if (!storyId) return;
+    set((state) => {
+      const nextSet = new Set(state.viewedStoryIds);
+      nextSet.add(storyId);
+      try {
+        localStorage.getItem('viewedStories') || '[]';
+        localStorage.setItem('viewedStories', JSON.stringify(Array.from(nextSet)));
+      } catch {}
+      return { viewedStoryIds: nextSet };
+    });
+  },
 
   activeStoryGroup: null, // { user, items: Story[] } currently being viewed
   activeStoryIndex: 0,    // Current index in activeStoryGroup.items

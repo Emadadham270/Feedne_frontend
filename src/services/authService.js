@@ -45,4 +45,14 @@ export const authService = {
     const response = await api.post('/auth/verify-otp', { code });
     return response.data;
   },
+
+  async sendPasswordOTP() {
+    const response = await api.post('/auth/send-password-otp');
+    return response.data;
+  },
+
+  async resetPasswordOTP(code, newPassword) {
+    const response = await api.post('/auth/reset-password-otp', { code, newPassword });
+    return response.data;
+  },
 };

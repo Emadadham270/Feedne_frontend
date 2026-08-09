@@ -6,10 +6,17 @@ import { timeAgo } from '@/lib/dateUtils';
 import { ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react';
 
 export function StoryViewerModal() {
-  const { activeStoryGroup, activeStoryIndex, closeStoryViewer, nextStory, prevStory, deleteStory } = useStoryStore();
+  const { activeStoryGroup, activeStoryIndex, closeStoryViewer, nextStory, prevStory, deleteStory, markStoryViewed } = useStoryStore();
   const { user: currentUser } = useAuthStore();
 
   const currentStory = activeStoryGroup?.items?.[activeStoryIndex];
+
+  // Mark current story as viewed
+  useEffect(() => {
+    if (currentStory?.id) {
+      markStoryViewed(currentStory.id);
+    }
+  }, [currentStory?.id, markStoryViewed]);
 
   // Auto-advance images after 5s
   useEffect(() => {
