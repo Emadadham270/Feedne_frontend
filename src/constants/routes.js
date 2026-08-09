@@ -16,5 +16,6 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
   ADMIN: '/admin',
+  LANDING: '/landing',
 };
 

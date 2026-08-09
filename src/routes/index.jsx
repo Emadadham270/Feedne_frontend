@@ -6,6 +6,7 @@ import { ROUTE_PATHS } from './routes.constants';
 import { Spinner } from '@/components/ui/Skeleton';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { OfflineDetector } from '@/components/shared/OfflineDetector';
+import { useAuthStore } from '@/store/authStore';
 
 // Error pages
 import { NotFoundPage } from '@/pages/error/NotFoundPage';
@@ -25,6 +26,7 @@ const GroupPage = lazy(() => import('@/pages/GroupPage').then((m) => ({ default:
 const JoinGroupPage = lazy(() => import('@/pages/JoinGroupPage').then((m) => ({ default: m.JoinGroupPage })));
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('@/pages/SignupPage').then((m) => ({ default: m.SignupPage })));
+const LandingPage = lazy(() => import('@/pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 const AdminPage = lazy(() => import('@/features/admin/AdminPage').then((m) => ({ default: m.AdminPage })));
 
 const PageFallback = () => (
@@ -33,8 +35,26 @@ const PageFallback = () => (
   </div>
 );
 
+// Root Index Component — Guests see 3D LandingPage at '/', authenticated users see HomePage
+const RootIndex = () => {
+  const { isAuthenticated } = useAuthStore();
+  return isAuthenticated ? <HomePage /> : <LandingPage />;
+};
+
 const router = createBrowserRouter([
-  // Public routes
+  // Origin route / (Landing page for unauthenticated visitors)
+  {
+    path: '/',
+    element: <Suspense fallback={<PageFallback />}><RootIndex /></Suspense>,
+  },
+  {
+    path: ROUTE_PATHS.LANDING,
+    element: <Suspense fallback={<PageFallback />}><LandingPage /></Suspense>,
+  },
+  {
+    path: '/welcome',
+    element: <Suspense fallback={<PageFallback />}><LandingPage /></Suspense>,
+  },
   {
     path: ROUTE_PATHS.LOGIN,
     element: <Suspense fallback={<PageFallback />}><LoginPage /></Suspense>,
@@ -55,7 +75,7 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
-        path: ROUTE_PATHS.HOME,
+        path: '/feed',
         element: <Suspense fallback={<PageFallback />}><HomePage /></Suspense>,
       },
       {
