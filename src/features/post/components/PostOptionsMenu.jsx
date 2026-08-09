@@ -60,12 +60,8 @@ export function PostOptionsMenu({ post }) {
     }
   };
 
-  const handleShare = async () => {
-    try {
-      await postService.sharePost(post.id);
-    } catch (err) {
-      alert(getErrorMessage(err));
-    }
+  const handleShare = () => {
+    openModal('createPost', { shareFromPost: post });
     setOpen(false);
   };
 

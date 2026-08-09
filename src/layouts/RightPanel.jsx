@@ -85,7 +85,7 @@ export function RightPanel() {
             {trendingPosts.map((post, idx) => (
               <div
                 key={post.id}
-                onClick={() => openModal('comments', { post })}
+                onClick={() => openModal('postDetail', post)}
                 className="group cursor-pointer p-2.5 rounded-2xl hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition-colors border border-transparent hover:border-neutral-100 dark:hover:border-neutral-800"
               >
                 <div className="flex items-start gap-2.5">
@@ -93,9 +93,10 @@ export function RightPanel() {
                     #{idx + 1}
                   </span>
                   <Avatar
-                    src={post.author?.avatar}
+                    src={post.author?.avatar || post.author?.profile?.imgUrl}
                     name={post.author?.username}
                     size="xs"
+                    isVerified={post.author?.isVerified}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
@@ -109,6 +110,26 @@ export function RightPanel() {
                       <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5 leading-relaxed">
                         {post.caption}
                       </p>
+                    )}
+
+                    {/* Shared original post snippet */}
+                    {post.sharedFrom && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openModal('postDetail', post.sharedFrom);
+                        }}
+                        className="mt-1.5 p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200/60 dark:border-neutral-700/50 hover:border-primary-500 transition-all text-[11px]"
+                      >
+                        <span className="font-semibold text-neutral-700 dark:text-neutral-200">
+                          Original: @{post.sharedFrom.author?.username || 'User'}
+                        </span>
+                        {post.sharedFrom.caption && (
+                          <p className="text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                            {post.sharedFrom.caption}
+                          </p>
+                        )}
+                      </div>
                     )}
 
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-neutral-400 font-medium">

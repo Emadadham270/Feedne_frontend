@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
+import { Avatar } from '@/components/ui/Avatar';
 import { useUIStore } from '@/store/uiStore';
 import { usePostStore } from '@/store/postStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -9,7 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { postService } from '@/services/postService';
 import { groupService } from '@/services/groupService';
 import { getErrorMessage } from '@/services/api';
-import { Image, X, Users } from 'lucide-react';
+import { Image, X, Users, Share2, Check } from 'lucide-react';
 
 export function CreatePostModal() {
   const { activeModal, activeModalData, closeModal } = useUIStore();
@@ -26,6 +27,7 @@ export function CreatePostModal() {
 
   const isOpen = activeModal === 'createPost';
   const targetGroupFromModal = activeModalData?.group;
+  const shareFromPost = activeModalData?.shareFromPost;
 
   const handleClose = () => {
     closeModal();
@@ -49,28 +51,32 @@ export function CreatePostModal() {
   };
 
   const handleSubmit = async () => {
-    if (!content.trim() && !file) return;
     setIsSubmitting(true);
     setError(null);
     try {
-      const formData = new FormData();
-      if (content.trim()) formData.append('caption', content.trim());
-      if (file) formData.append('media', file);
-
-      const effectiveGroupId = targetGroupFromModal?.id || selectedGroupId;
-
       let newPost;
-      if (effectiveGroupId) {
-        newPost = await groupService.createGroupPost(effectiveGroupId, formData);
-        // Refresh active group posts if currently viewing group
-        if (useGroupStore.getState().activeGroup?.id === effectiveGroupId) {
-          useGroupStore.getState().selectGroup(effectiveGroupId);
-        }
+
+      if (shareFromPost) {
+        // Reshare with optional caption
+        newPost = await postService.sharePost(shareFromPost.id, content.trim() || undefined);
       } else {
-        newPost = await postService.createPost(formData);
+        const formData = new FormData();
+        if (content.trim()) formData.append('caption', content.trim());
+        if (file) formData.append('media', file);
+
+        const effectiveGroupId = targetGroupFromModal?.id || selectedGroupId;
+
+        if (effectiveGroupId) {
+          newPost = await groupService.createGroupPost(effectiveGroupId, formData);
+          if (useGroupStore.getState().activeGroup?.id === effectiveGroupId) {
+            useGroupStore.getState().selectGroup(effectiveGroupId);
+          }
+        } else {
+          newPost = await postService.createPost(formData);
+        }
       }
 
-      addPost(newPost);
+      if (newPost) addPost(newPost);
       handleClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -80,7 +86,12 @@ export function CreatePostModal() {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Create New Post" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={shareFromPost ? 'Reshare Post' : 'Create New Post'}
+      size="md"
+    >
       <div className="p-6 space-y-4">
         {/* Posting destination indicator / selector */}
         {targetGroupFromModal ? (
@@ -89,7 +100,7 @@ export function CreatePostModal() {
             <span>Posting in <strong>{targetGroupFromModal.name}</strong></span>
           </div>
         ) : (
-          myGroups.length > 0 && (
+          !shareFromPost && myGroups.length > 0 && (
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">
                 Post Destination
@@ -111,15 +122,49 @@ export function CreatePostModal() {
         )}
 
         <Textarea
-          label="What's on your mind?"
-          placeholder="Share your thoughts..."
+          label={shareFromPost ? 'Add a caption (optional)' : "What's on your mind?"}
+          placeholder={shareFromPost ? 'Say something about this post...' : 'Share your thoughts...'}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          rows={4}
+          rows={3}
         />
 
-        {/* Media upload */}
-        {!file && (
+        {/* Reshare Preview Box */}
+        {shareFromPost && (
+          <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 space-y-2">
+            <div className="flex items-center gap-2">
+              <Avatar
+                src={shareFromPost.author?.avatar || shareFromPost.author?.profile?.imgUrl}
+                name={shareFromPost.author?.username || 'User'}
+                size="xs"
+                isVerified={shareFromPost.author?.isVerified}
+              />
+              <span className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1">
+                <span>{shareFromPost.author?.username || shareFromPost.author?.displayName}</span>
+                {shareFromPost.author?.isVerified && (
+                  <span className="w-3 h-3 rounded-full bg-blue-500 text-white flex items-center justify-center inline-flex">
+                    <Check size={8} strokeWidth={3.5} />
+                  </span>
+                )}
+              </span>
+            </div>
+            {shareFromPost.caption && (
+              <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-3">
+                {shareFromPost.caption}
+              </p>
+            )}
+            {shareFromPost.mediaUrl && (
+              <img
+                src={shareFromPost.mediaUrl}
+                alt="Original media"
+                className="w-full max-h-40 object-cover rounded-xl mt-1"
+              />
+            )}
+          </div>
+        )}
+
+        {/* Media upload (only if not resharing) */}
+        {!shareFromPost && !file && (
           <label className="flex items-center gap-3 cursor-pointer px-4 py-3 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-primary-400 transition-colors">
             <Image size={20} className="text-neutral-400" />
             <span className="text-sm text-neutral-500">Add photo or video (optional, max 10 MB)</span>
@@ -133,7 +178,7 @@ export function CreatePostModal() {
         )}
 
         {/* Preview */}
-        {preview && (
+        {!shareFromPost && preview && (
           <div className="relative rounded-xl overflow-hidden">
             {file?.type.startsWith('video/') ? (
               <video src={preview} className="w-full max-h-64 object-cover rounded-xl" controls />
@@ -159,9 +204,9 @@ export function CreatePostModal() {
           size="md"
           isLoading={isSubmitting}
           onClick={handleSubmit}
-          disabled={!content.trim() && !file}
+          disabled={!shareFromPost && !content.trim() && !file}
         >
-          Post
+          {shareFromPost ? 'Reshare' : 'Post'}
         </Button>
       </div>
     </Modal>

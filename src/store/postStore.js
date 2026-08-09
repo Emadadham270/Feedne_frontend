@@ -87,14 +87,14 @@ export const usePostStore = create((set, get) => ({
     set({ isLoadingTrending: true });
     try {
       const currentUserId = getCurrentUserId();
-      const { posts, hasMore } = await postService.getTrendingPosts({ page });
-      const mapped = mapPosts(posts, currentUserId);
-      set((state) => ({
-        trendingPosts:   reset ? mapped : [...state.trendingPosts, ...mapped],
-        hasMoreTrending: hasMore,
+      const { posts } = await postService.getTrendingPosts({ page, limit: 5 });
+      const mapped = mapPosts(posts.slice(0, 5), currentUserId);
+      set({
+        trendingPosts:   mapped,
+        hasMoreTrending: false,
         trendingPage:    page + 1,
         isLoadingTrending: false,
-      }));
+      });
     } catch {
       set({ isLoadingTrending: false });
     }
@@ -128,12 +128,11 @@ export const usePostStore = create((set, get) => ({
     }
   },
 
-  // ── Like Toggle (optimistic) ───────────────────────────────────────────────
+  // ── Reaction Toggle (optimistic) ───────────────────────────────────────────
 
-  toggleLike: async (postId) => {
+  toggleReaction: async (postId, type = 'LIKE') => {
     const currentUserId = getCurrentUserId();
 
-    // Read current liked state from any of the post lists
     const findPost = (lists) => {
       for (const list of lists) {
         const p = list.find((p) => p.id === postId);
@@ -150,26 +149,37 @@ export const usePostStore = create((set, get) => ({
       state.savedPosts,
     ]);
 
-    const wasLiked = post?.isLiked ?? false;
     const prevReactions = post?.reactions ?? [];
+    const existingUserReaction = prevReactions.find((r) => r.userId === currentUserId);
 
-    // Build new reactions array optimistically
-    const newReactions = wasLiked
-      ? prevReactions.filter((r) => r.userId !== currentUserId)
-      : [...prevReactions, { userId: currentUserId, type: 'LIKE' }];
+    let newReactions = [];
+    let isLiked = true;
+
+    if (!type) {
+      // Remove reaction
+      newReactions = prevReactions.filter((r) => r.userId !== currentUserId);
+      isLiked = false;
+    } else if (existingUserReaction) {
+      // Update reaction type
+      newReactions = prevReactions.map((r) =>
+        r.userId === currentUserId ? { ...r, type } : r
+      );
+    } else {
+      // Add new reaction
+      newReactions = [...prevReactions, { userId: currentUserId, type }];
+    }
 
     const updateList = (posts) =>
       posts.map((p) => {
         if (p.id !== postId) return p;
         return {
           ...p,
-          isLiked:   !wasLiked,
+          isLiked,
           reactions: newReactions,
-          _count:    { ...p._count, reactions: newReactions.length },
+          _count: { ...p._count, reactions: newReactions.length },
         };
       });
 
-    // Apply optimistic update across all lists
     set((s) => ({
       feedPosts:     updateList(s.feedPosts),
       explorePosts:  updateList(s.explorePosts),
@@ -178,25 +188,32 @@ export const usePostStore = create((set, get) => ({
     }));
 
     try {
-      if (wasLiked) {
+      if (!type) {
         await postService.unlikePost(postId);
+      } else if (existingUserReaction) {
+        await postService.changeReaction(postId, type);
       } else {
-        await postService.likePost(postId, 'LIKE');
+        await postService.likePost(postId, type);
       }
-    } catch (err) {
-      // Revert optimistic update on failure
-      const revert = (posts) =>
-        posts.map((p) => {
-          if (p.id !== postId) return p;
-          return { ...p, isLiked: wasLiked, reactions: prevReactions,
-            _count: { ...p._count, reactions: prevReactions.length } };
-        });
-      set((s) => ({
-        feedPosts:     revert(s.feedPosts),
-        explorePosts:  revert(s.explorePosts),
-        trendingPosts: revert(s.trendingPosts),
-        savedPosts:    revert(s.savedPosts),
+    } catch {
+      // Revert on error
+      set(() => ({
+        feedPosts:     state.feedPosts,
+        explorePosts:  state.explorePosts,
+        trendingPosts: state.trendingPosts,
+        savedPosts:    state.savedPosts,
       }));
+    }
+  },
+
+  toggleLike: async (postId) => {
+    const post = get().feedPosts.find((p) => p.id === postId) ||
+                 get().trendingPosts.find((p) => p.id === postId);
+    const userReaction = post?.reactions?.find((r) => r.userId === getCurrentUserId());
+    if (userReaction) {
+      await get().toggleReaction(postId, null);
+    } else {
+      await get().toggleReaction(postId, 'LIKE');
     }
   },
 

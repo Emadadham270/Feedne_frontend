@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
+import { ReactionPicker } from '@/components/ui/ReactionPicker';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { postService } from '@/services/postService';
 import { getErrorMessage } from '@/services/api';
-import { Heart, Trash2, Reply, ChevronDown, Send } from 'lucide-react';
+import { Trash2, Reply, ChevronDown, Send } from 'lucide-react';
 import { timeAgo } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
 import { CONFIG } from '@/constants/config';
@@ -17,17 +18,6 @@ const getCurrentUserId = () => {
   } catch {
     return null;
   }
-};
-
-const findCommentById = (comments, targetId) => {
-  for (const comment of comments) {
-    if (comment.id === targetId) return comment;
-    if (comment._replies?.length) {
-      const found = findCommentById(comment._replies, targetId);
-      if (found) return found;
-    }
-  }
-  return null;
 };
 
 const updateCommentInTree = (comments, targetId, updater) =>
@@ -71,12 +61,21 @@ const removeCommentFromTree = (comments, targetId) =>
       return comment;
     });
 
-const toggleLikeInCommentTree = (comments, targetId, currentUserId) =>
+const updateReactionInCommentTree = (comments, targetId, currentUserId, type) =>
   updateCommentInTree(comments, targetId, (comment) => {
-    const isLiked = comment.reactions?.some((reaction) => reaction.userId === currentUserId);
-    const nextReactions = isLiked
-      ? (comment.reactions || []).filter((reaction) => reaction.userId !== currentUserId)
-      : [...(comment.reactions || []), { userId: currentUserId, type: 'LIKE' }];
+    const prevReactions = comment.reactions || [];
+    let nextReactions = [];
+
+    if (!type) {
+      nextReactions = prevReactions.filter((r) => r.userId !== currentUserId);
+    } else {
+      const exists = prevReactions.some((r) => r.userId === currentUserId);
+      if (exists) {
+        nextReactions = prevReactions.map((r) => (r.userId === currentUserId ? { ...r, type } : r));
+      } else {
+        nextReactions = [...prevReactions, { userId: currentUserId, type }];
+      }
+    }
 
     return { ...comment, reactions: nextReactions };
   });
@@ -151,59 +150,54 @@ export function CommentsModal() {
   };
 
   const handleDelete = async (commentId) => {
+    setComments((prev) => removeCommentFromTree(prev, commentId));
     try {
       await postService.deleteComment(commentId);
-      setComments((prev) => removeCommentFromTree(prev, commentId));
     } catch (err) {
       console.error('Failed to delete comment:', getErrorMessage(err));
     }
   };
 
-  const handleLike = async (commentId) => {
-    const currentUserId = getCurrentUserId();
-    const targetComment = findCommentById(comments, commentId);
-    if (!targetComment) return;
-
-    const shouldUndo = targetComment.reactions?.some((reaction) => reaction.userId === currentUserId) ?? false;
-
-    setComments((prev) => toggleLikeInCommentTree(prev, commentId, currentUserId));
+  const handleReact = async (commentId, type) => {
+    const currentUserId = user?.id || getCurrentUserId();
+    setComments((prev) => updateReactionInCommentTree(prev, commentId, currentUserId, type));
 
     try {
-      if (shouldUndo) {
+      if (!type) {
         await postService.undoReactToComment(commentId);
       } else {
-        await postService.reactToComment(commentId, 'LIKE');
+        await postService.reactToComment(commentId, type);
       }
     } catch (err) {
-      console.error('Failed to toggle reaction:', getErrorMessage(err));
-      // Revert on failure
-      setComments((prev) => toggleLikeInCommentTree(prev, commentId, currentUserId));
+      console.error('Failed to react to comment:', getErrorMessage(err));
     }
   };
 
-  const handleLoadReplies = (commentId, replies) => {
-    setComments((prev) => setRepliesInCommentTree(prev, commentId, replies));
+  const handleLoadReplies = (parentId, replies) => {
+    setComments((prev) => setRepliesInCommentTree(prev, parentId, replies));
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Comments" size="lg">
-      <div className="flex flex-col h-[70vh]">
-        {/* Comments list */}
+    <Modal isOpen={isOpen} onClose={handleClose} title="Comments" size="md">
+      <div className="flex flex-col h-[520px] max-h-[80vh]">
+        {/* Comments List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : comments.length === 0 ? (
-            <p className="text-center text-neutral-400 py-12">No comments yet. Be the first!</p>
+            <p className="text-center text-sm text-neutral-400 py-8">
+              No comments yet. Be the first to comment!
+            </p>
           ) : (
             comments.map((comment) => (
               <CommentItem
                 key={comment.id}
                 comment={comment}
-                currentUserId={getCurrentUserId()}
+                currentUserId={user?.id || getCurrentUserId()}
                 onDelete={handleDelete}
-                onLike={handleLike}
+                onReact={handleReact}
                 onReply={handleReplyTo}
                 onLoadReplies={handleLoadReplies}
                 postId={post?.id}
@@ -253,7 +247,7 @@ function CommentItem({
   comment,
   currentUserId,
   onDelete,
-  onLike,
+  onReact,
   onReply,
   onLoadReplies,
   postId,
@@ -263,11 +257,10 @@ function CommentItem({
   const [loadingReplies, setLoadingR] = useState(false);
   const replyCount = comment._count?.replies ?? 0;
 
-  const isLiked = comment.reactions?.some((r) => r.userId === currentUserId);
-  const likeCount = comment.reactions?.length ?? 0;
+  const userReaction = comment.reactions?.find((r) => r.userId === currentUserId)?.type;
+  const reactionCount = comment.reactions?.length ?? 0;
   const isOwn = comment.author?.id === currentUserId;
 
-  // If new replies are added dynamically to this comment, automatically show them
   useEffect(() => {
     if (comment._replies?.length > 0) {
       setShowReplies(true);
@@ -315,18 +308,17 @@ function CommentItem({
         </div>
 
         {/* Action row */}
-        <div className="flex items-center gap-4 mt-1.5 px-2">
+        <div className="flex items-center gap-3 mt-1 px-2">
           <span className="text-xs text-neutral-400">{timeAgo(comment.createdAt)}</span>
-          <button
-            onClick={() => onLike(comment.id)}
-            className={cn(
-              'flex items-center gap-1 text-xs font-medium transition-colors',
-              isLiked ? 'text-primary-500' : 'text-neutral-400 hover:text-primary-500'
-            )}
-          >
-            <Heart size={12} className={cn(isLiked && 'fill-primary-500')} />
-            {likeCount > 0 && likeCount}
-          </button>
+          
+          <ReactionPicker
+            userReaction={userReaction}
+            count={reactionCount}
+            onReact={(type) => onReact(comment.id, type)}
+            onRemove={() => onReact(comment.id, null)}
+            size="sm"
+          />
+
           <button
             onClick={() => onReply(comment)}
             className="flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-secondary-500 transition-colors"
@@ -370,7 +362,7 @@ function CommentItem({
                 comment={reply}
                 currentUserId={currentUserId}
                 onDelete={onDelete}
-                onLike={onLike}
+                onReact={onReact}
                 onReply={onReply}
                 onLoadReplies={onLoadReplies}
                 postId={postId}
@@ -383,4 +375,3 @@ function CommentItem({
     </div>
   );
 }
-

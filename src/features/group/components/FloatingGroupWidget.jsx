@@ -119,26 +119,9 @@ export function FloatingGroupWidget() {
 
   return (
     <>
-      {/* Floating Bottom-Right Trigger Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          onClick={toggleWidget}
-          className="relative flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-primary-500 to-tertiary-500 hover:from-primary-600 hover:to-tertiary-600 text-white font-semibold rounded-full shadow-2xl hover:shadow-primary-500/25 hover:scale-105 active:scale-95 transition-all duration-200"
-          title="Groups"
-        >
-          <Users size={20} />
-          <span className="text-sm">Groups</span>
-          {myGroups.length > 0 && (
-            <span className="w-5 h-5 rounded-full bg-white text-primary-600 text-xs font-bold flex items-center justify-center">
-              {myGroups.length}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Floating Bottom-Right Panel */}
+      {/* Floating Bottom-Right Panel (triggered via Sidebar Groups button) */}
       {isWidgetOpen && (
-        <div className="fixed bottom-20 right-6 z-50 w-[420px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[calc(100vh-6rem)] bg-white dark:bg-[#1A1D27] rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 w-[420px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[calc(100vh-4rem)] bg-white dark:bg-[#1A1D27] rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
             <div className="flex items-center gap-2">

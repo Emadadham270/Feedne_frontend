@@ -3,8 +3,10 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { RightPanel } from './RightPanel';
 import { CreatePostModal } from '@/features/post/components/CreatePostModal';
+import { PostDetailModal } from '@/features/post/components/PostDetailModal';
 import { EditProfileModal } from '@/features/profile/components/EditProfileModal';
 import { CommentsModal } from '@/features/post/components/CommentsModal';
+import { ReactorsModal } from '@/features/post/components/ReactorsModal';
 import { CreateStoryModal } from '@/features/story/components/CreateStoryModal';
 import { StoryViewerModal } from '@/features/story/components/StoryViewerModal';
 import { FloatingGroupWidget } from '@/features/group/components/FloatingGroupWidget';
@@ -27,9 +29,9 @@ export function MainLayout({ children, showRightPanel = true }) {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-primary)]">
-      {/* Sidebar — desktop always visible, mobile overlay */}
+      {/* Sidebar — desktop always visible, sticky top-0 h-screen */}
       <div className={cn(
-        'hidden lg:flex flex-col flex-shrink-0 transition-all duration-300',
+        'hidden lg:flex flex-col flex-shrink-0 sticky top-0 h-screen z-30 transition-all duration-300',
         sidebarOpen ? 'w-64' : 'w-0 overflow-hidden',
       )}>
         <Sidebar />
@@ -48,10 +50,12 @@ export function MainLayout({ children, showRightPanel = true }) {
 
       {/* Global Modals & Floating Bottom-Right Widgets */}
       <CreatePostModal />
+      <PostDetailModal />
       <CreateStoryModal />
       <StoryViewerModal />
       <EditProfileModal />
       <CommentsModal />
+      <ReactorsModal />
       <FloatingGroupWidget />
       <IncomingCallOverlay />
       <NotificationToastContainer />

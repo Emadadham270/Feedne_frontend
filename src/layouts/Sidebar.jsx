@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, TrendingUp, User, Settings, LogOut, PlusCircle, Flame, Check, Shield } from 'lucide-react';
+import { Home, Compass, TrendingUp, User, Settings, LogOut, PlusCircle, Flame, Check, Shield, Users } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
+import { useGroupStore } from '@/store/groupStore';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/constants/routes';
 
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const { user, logout } = useAuthStore();
   const { openModal } = useUIStore();
+  const { toggleWidget, myGroups } = useGroupStore();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -63,6 +65,22 @@ export function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+
+        {/* Groups button in left sidebar */}
+        <button
+          onClick={toggleWidget}
+          className="nav-link w-full text-left flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <Users size={20} className="text-primary-500 group-hover:scale-110 transition-transform" />
+            <span>Groups</span>
+          </div>
+          {myGroups.length > 0 && (
+            <span className="w-5 h-5 rounded-full bg-primary-500 text-white text-[11px] font-bold flex items-center justify-center">
+              {myGroups.length}
+            </span>
+          )}
+        </button>
 
         {/* Admin Panel link — only visible to ADMIN role users */}
         {user?.role === 'ADMIN' && (
