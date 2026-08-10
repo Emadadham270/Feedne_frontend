@@ -7,7 +7,7 @@ import { CONFIG } from '@/constants/config';
  * when the base URL or auth mechanism changes.
  */
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: CONFIG.API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });

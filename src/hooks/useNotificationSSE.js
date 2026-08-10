@@ -23,7 +23,7 @@ export function useNotificationSSE() {
     fetchNotifications();
 
     // Open EventSource connection passing token as query param
-    const streamUrl = `/api/notifications/stream?token=${encodeURIComponent(token)}`;
+    const streamUrl = `${CONFIG.API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token)}`;
     const es = new EventSource(streamUrl);
     eventSourceRef.current = es;
 
