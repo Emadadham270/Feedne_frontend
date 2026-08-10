@@ -39,13 +39,20 @@ export function FollowListModal({ isOpen, onClose, userId, type = 'followers' })
   const handleFollow = async (targetId, shouldFollow) => {
     try {
       if (shouldFollow) {
-        await userService.followUser(targetId);
+        const res = await userService.followUser(targetId);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === targetId
+              ? { ...u, isFollowing: res.status === 'following', followStatus: res.status, isRequested: res.status === 'requested' }
+              : u
+          )
+        );
       } else {
         await userService.unfollowUser(targetId);
+        setUsers((prev) =>
+          prev.map((u) => u.id === targetId ? { ...u, isFollowing: false, followStatus: 'none', isRequested: false } : u)
+        );
       }
-      setUsers((prev) =>
-        prev.map((u) => (u.id === targetId ? { ...u, isFollowing: shouldFollow } : u))
-      );
     } catch {}
   };
 

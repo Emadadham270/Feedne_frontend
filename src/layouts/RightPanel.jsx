@@ -37,13 +37,20 @@ export function RightPanel() {
   const handleFollow = async (userId, shouldFollow) => {
     try {
       if (shouldFollow) {
-        await userService.followUser(userId);
+        const res = await userService.followUser(userId);
+        setSuggested((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? { ...u, isFollowing: res.status === 'following', followStatus: res.status, isRequested: res.status === 'requested' }
+              : u
+          )
+        );
       } else {
         await userService.unfollowUser(userId);
+        setSuggested((prev) =>
+          prev.map((u) => u.id === userId ? { ...u, isFollowing: false, followStatus: 'none', isRequested: false } : u)
+        );
       }
-      setSuggested((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isFollowing: shouldFollow } : u))
-      );
     } catch (err) {
       console.error('Follow failed:', err);
     }

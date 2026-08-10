@@ -36,10 +36,18 @@ export function MainLayout({ children, showRightPanel = true }) {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-primary)]">
-      {/* Sidebar — desktop always visible, sticky top-0 h-screen */}
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => useUIStore.getState().toggleSidebar()}
+        />
+      )}
+
+      {/* Sidebar Container */}
       <div className={cn(
-        'hidden lg:flex flex-col flex-shrink-0 sticky top-0 h-screen z-30 transition-all duration-300',
-        sidebarOpen ? 'w-64' : 'w-0 overflow-hidden',
+        'fixed inset-y-0 left-0 z-50 h-screen transition-transform duration-300 lg:static lg:flex lg:flex-shrink-0 lg:sticky lg:top-0 lg:translate-x-0 lg:w-64',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <Sidebar />
       </div>

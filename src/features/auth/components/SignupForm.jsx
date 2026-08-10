@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Lock } from 'lucide-react';
+import { Lock, Mail, User } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordStrengthInput } from '@/components/ui/PasswordStrengthInput';
 import { useAuthStore } from '@/store/authStore';
 import { ROUTES } from '@/constants/routes';
 
@@ -10,9 +11,11 @@ export function SignupForm() {
   const { register, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
   const [form, setForm] = useState({ displayName: '', username: '', email: '', password: '' });
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isPasswordValid) return;
     await register(form);
     navigate(ROUTES.HOME);
   };
@@ -33,9 +36,15 @@ export function SignupForm() {
       <Input label="Full Name" icon={User} placeholder="Alex Rivers" value={form.displayName} onChange={set('displayName')} required />
       <Input label="Username" placeholder="alexrivers" value={form.username} onChange={set('username')} required />
       <Input label="Email" type="email" icon={Mail} placeholder="you@example.com" value={form.email} onChange={set('email')} required />
-      <Input label="Password" type="password" icon={Lock} placeholder="••••••••" value={form.password} onChange={set('password')} required />
+      <PasswordStrengthInput
+        label="Password"
+        value={form.password}
+        onChange={set('password')}
+        onValidityChange={setIsPasswordValid}
+        required
+      />
 
-      <Button type="submit" variant="primary" fullWidth isLoading={isLoading}>
+      <Button type="submit" variant="primary" fullWidth isLoading={isLoading} disabled={!isPasswordValid || form.password.length === 0}>
         Create Account
       </Button>
 

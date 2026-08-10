@@ -9,6 +9,7 @@ const variants = {
 };
 
 const sizes = {
+  xs: 'px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider',
   sm: 'px-3 py-1.5 text-xs',
   md: 'px-5 py-2.5 text-sm',
   lg: 'px-7 py-3 text-base',
@@ -31,7 +32,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 font-semibold border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 font-semibold border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0',
         variants[variant],
         sizes[size],
         rounded === 'full' ? 'rounded-full' : rounded === 'xl' ? 'rounded-xl' : 'rounded-lg',

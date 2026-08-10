@@ -18,11 +18,12 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const { user, logout } = useAuthStore();
-  const { openModal } = useUIStore();
+  const { openModal, setSidebarOpen } = useUIStore();
   const { toggleWidget, myGroups } = useGroupStore();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    setSidebarOpen(false);
     await logout();
     navigate(ROUTES.LOGIN);
   };
@@ -59,6 +60,7 @@ export function Sidebar() {
             key={to}
             to={to}
             end={to === ROUTES.HOME}
+            onClick={() => setSidebarOpen(false)}
             className={({ isActive }) => cn('nav-link', isActive && 'active')}
           >
             <Icon size={20} />
@@ -68,7 +70,10 @@ export function Sidebar() {
 
         {/* Groups button in left sidebar */}
         <button
-          onClick={toggleWidget}
+          onClick={() => {
+            setSidebarOpen(false);
+            toggleWidget();
+          }}
           className="nav-link w-full text-left flex items-center justify-between group"
         >
           <div className="flex items-center gap-3">
@@ -86,6 +91,7 @@ export function Sidebar() {
         {user?.role === 'ADMIN' && (
           <NavLink
             to={ROUTES.ADMIN}
+            onClick={() => setSidebarOpen(false)}
             className={({ isActive }) => cn('nav-link', isActive && 'active')}
           >
             <Shield size={20} className="text-amber-500" />
@@ -100,7 +106,10 @@ export function Sidebar() {
           variant="primary"
           size="md"
           className="w-full justify-center gap-2 font-bold shadow-lg shadow-primary-500/20"
-          onClick={() => openModal('createPost')}
+          onClick={() => {
+            setSidebarOpen(false);
+            openModal('createPost');
+          }}
         >
           <PlusCircle size={18} />
           <span>New Post</span>

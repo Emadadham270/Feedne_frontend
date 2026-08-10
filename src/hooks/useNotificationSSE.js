@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
+import { CONFIG } from '@/constants/config';
 
 export function useNotificationSSE() {
-  const { isAuthenticated, token } = useAuthStore();
-  const { addNotification, fetchNotifications } = useNotificationStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const token = useAuthStore((state) => state.token);
+  const addNotification = useNotificationStore((state) => state.addNotification);
+  const fetchNotifications = useNotificationStore((state) => state.fetchNotifications);
   const eventSourceRef = useRef(null);
 
   useEffect(() => {
@@ -41,8 +44,10 @@ export function useNotificationSSE() {
     };
 
     return () => {
-      es.close();
-      eventSourceRef.current = null;
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
     };
-  }, [isAuthenticated, token, addNotification, fetchNotifications]);
+  }, [isAuthenticated, token]);
 }

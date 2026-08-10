@@ -3,6 +3,7 @@ import { MainLayout } from '@/layouts/MainLayout';
 import { Toggle } from '@/components/ui/Toggle';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordStrengthInput } from '@/components/ui/PasswordStrengthInput';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/authService';
 import { userService } from '@/services/userService';
@@ -34,6 +35,7 @@ export function SettingsPage() {
   const [showPassForm, setShowPassForm] = useState(false);
   const [passOtpCode, setPassOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [isNewPasswordValid, setIsNewPasswordValid] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPass, setUpdatingPass] = useState(false);
   const [passSuccess, setPassSuccess] = useState(null);
@@ -106,13 +108,13 @@ export function SettingsPage() {
     e.preventDefault();
     if (!passOtpCode.trim() || !newPassword || !confirmPassword) return;
 
-    if (newPassword !== confirmPassword) {
-      setPassError('New passwords do not match');
+    if (!isNewPasswordValid) {
+      setPassError('Please meet all password strength requirements');
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPassError('Password must be at least 6 characters long');
+    if (newPassword !== confirmPassword) {
+      setPassError('New passwords do not match');
       return;
     }
 
@@ -288,12 +290,12 @@ export function SettingsPage() {
                   maxLength={6}
                   required
                 />
-                <Input
+                <PasswordStrengthInput
                   label="New Password"
-                  type="password"
                   placeholder="••••••••"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  onValidityChange={setIsNewPasswordValid}
                   required
                 />
                 <Input
@@ -307,7 +309,7 @@ export function SettingsPage() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit" variant="primary" size="sm" isLoading={updatingPass}>
+                <Button type="submit" variant="primary" size="sm" isLoading={updatingPass} disabled={!isNewPasswordValid || newPassword.length === 0}>
                   Update Password
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setShowPassForm(false)}>
