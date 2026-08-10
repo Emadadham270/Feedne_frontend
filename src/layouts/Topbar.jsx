@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Mail, Moon, Sun, Menu, Search, Users, MessageSquare, User, ArrowRight, Check } from 'lucide-react';
+import { Bell, Mail, Moon, Sun, Menu, Search, Users, MessageSquare, User, ArrowRight, Check, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/store/authStore';
@@ -20,6 +20,7 @@ export function Topbar() {
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const searchRef = useRef(null);
 
   const chatUnread = getTotalUnread();
@@ -192,56 +193,97 @@ export function Topbar() {
       </div>
 
       {/* Right actions: Theme toggle, Notifications, Direct Messages, User avatar */}
-      <div className="flex items-center gap-2">
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          aria-label="Toggle theme"
-        >
-          {theme === 'dark'
-            ? <Sun size={20} className="text-yellow-400" />
-            : <Moon size={20} className="text-neutral-500" />
-          }
-        </button>
-
-        {/* Notifications */}
-        <Link
-          to={ROUTES.NOTIFICATIONS}
-          className="relative p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-        >
-          <Bell size={20} className="text-neutral-600 dark:text-neutral-400" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+      <div className="flex items-center gap-1 sm:gap-2">
+        {/* Mobile Dropdown Toggle */}
+        <div className="relative sm:hidden">
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="p-1.5 flex items-center gap-1 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          >
+            {user && <Avatar src={user.avatar} name={user.displayName} size="xs" isVerified={user.isVerified} />}
+            <ChevronDown size={16} />
+            {(unreadCount > 0 || chatUnread > 0) && (
+              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-primary-500 rounded-full border-2 border-white dark:border-[#1A1D27]" />
+            )}
+          </button>
+          
+          {showMobileMenu && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#1A1D27] rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800 py-2 z-50 flex flex-col">
+              <button onClick={toggleTheme} className="w-full flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm text-neutral-700 dark:text-neutral-300">
+                {theme === 'dark' ? <Sun size={16} className="text-yellow-400" /> : <Moon size={16} />}
+                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+              </button>
+              <Link to={ROUTES.NOTIFICATIONS} onClick={() => setShowMobileMenu(false)} className="w-full flex items-center justify-between px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm text-neutral-700 dark:text-neutral-300">
+                <div className="flex items-center gap-3"><Bell size={16} /><span>Notifications</span></div>
+                {unreadCount > 0 && <span className="bg-primary-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+              </Link>
+              <Link to={ROUTES.MESSAGES} onClick={() => setShowMobileMenu(false)} className="w-full flex items-center justify-between px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm text-neutral-700 dark:text-neutral-300">
+                <div className="flex items-center gap-3"><Mail size={16} /><span>Messages</span></div>
+                {chatUnread > 0 && <span className="bg-primary-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{chatUnread}</span>}
+              </Link>
+              <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1" />
+              {user && (
+                <Link to={ROUTES.PROFILE_VIEW(user.username)} onClick={() => setShowMobileMenu(false)} className="w-full flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm text-neutral-700 dark:text-neutral-300">
+                  <User size={16} />
+                  <span>My Profile</span>
+                </Link>
+              )}
+            </div>
           )}
-        </Link>
+        </div>
 
-        {/* Messages */}
-        <Link
-          to={ROUTES.MESSAGES}
-          className="relative p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-        >
-          <Mail size={20} className="text-neutral-600 dark:text-neutral-400" />
-          {chatUnread > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-              {chatUnread}
-            </span>
+        {/* Desktop actions (hidden on mobile) */}
+        <div className="hidden sm:flex items-center gap-2">
+          {/* Dark mode toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark'
+              ? <Sun size={20} className="text-yellow-400" />
+              : <Moon size={20} className="text-neutral-500" />
+            }
+          </button>
+  
+          {/* Notifications */}
+          <Link
+            to={ROUTES.NOTIFICATIONS}
+            className="relative p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          >
+            <Bell size={20} className="text-neutral-600 dark:text-neutral-400" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+  
+          {/* Messages */}
+          <Link
+            to={ROUTES.MESSAGES}
+            className="relative p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          >
+            <Mail size={20} className="text-neutral-600 dark:text-neutral-400" />
+            {chatUnread > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {chatUnread}
+              </span>
+            )}
+          </Link>
+  
+          {/* User avatar */}
+          {user && (
+            <Avatar
+              src={user.avatar}
+              name={user.displayName}
+              size="sm"
+              isVerified={user.isVerified}
+              onClick={() => navigate(ROUTES.PROFILE_VIEW(user.username))}
+              className="ml-1 cursor-pointer"
+            />
           )}
-        </Link>
-
-        {/* User avatar */}
-        {user && (
-          <Avatar
-            src={user.avatar}
-            name={user.displayName}
-            size="sm"
-            isVerified={user.isVerified}
-            onClick={() => navigate(ROUTES.PROFILE_VIEW(user.username))}
-            className="ml-1 cursor-pointer"
-          />
-        )}
+        </div>
       </div>
     </header>
   );

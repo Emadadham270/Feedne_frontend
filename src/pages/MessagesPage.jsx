@@ -9,6 +9,7 @@ import { mapUsers } from '@/lib/userMapper';
 import { Spinner } from '@/components/ui/Skeleton';
 import { MessageCircle, Search, X } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
+import { cn } from '@/lib/utils';
 
 export function MessagesPage() {
   const {
@@ -59,7 +60,10 @@ export function MessagesPage() {
     <MainLayout showRightPanel={false}>
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Conversation list */}
-        <div className="w-80 flex-shrink-0 border-r border-neutral-100 dark:border-neutral-800 flex flex-col">
+        <div className={cn(
+          "flex-shrink-0 border-r border-neutral-100 dark:border-neutral-800 flex flex-col h-full",
+          activeConversationId ? "hidden md:flex md:w-80" : "w-full md:w-80"
+        )}>
           <div className="p-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
             <h2 className="font-bold text-neutral-900 dark:text-white">Messages</h2>
             <button
@@ -132,8 +136,15 @@ export function MessagesPage() {
         </div>
 
         {/* Chat window */}
-        <div className="flex-1">
-          <ChatWindow conversation={activeConversation} onStartCall={handleStartCall} />
+        <div className={cn(
+          "flex-1 h-full w-full min-w-0",
+          !activeConversationId ? "hidden md:flex" : "flex"
+        )}>
+          <ChatWindow 
+            conversation={activeConversation} 
+            onStartCall={handleStartCall} 
+            onBack={() => setActiveConversation(null)}
+          />
         </div>
       </div>
 

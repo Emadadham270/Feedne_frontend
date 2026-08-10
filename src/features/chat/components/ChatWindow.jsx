@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Image as ImageIcon, Phone, Video, MessageCircle, Mic, Square, Trash2, X, Check } from 'lucide-react';
+import { Send, Image as ImageIcon, Phone, Video, MessageCircle, Mic, Square, Trash2, X, Check, ArrowLeft } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { MessageBubble } from './MessageBubble';
 import { useChatStore } from '@/store/chatStore';
@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { EmptyState } from '@/components/shared/EmptyState';
 
-export function ChatWindow({ conversation, onStartCall }) {
+export function ChatWindow({ conversation, onStartCall, onBack }) {
   const { messages, sendMessage, isSending } = useChatStore();
   const { user } = useAuthStore();
   const [text, setText] = useState('');
@@ -81,10 +81,18 @@ export function ChatWindow({ conversation, onStartCall }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#1A1D27]">
+    <div className="flex flex-col w-full h-full min-w-0 bg-white dark:bg-[#1A1D27]">
       {/* Chat Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="md:hidden p-2 -ml-2 rounded-xl text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800 transition-colors"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <Avatar
             src={conversation.participant.avatar}
             name={conversation.participant.displayName}
